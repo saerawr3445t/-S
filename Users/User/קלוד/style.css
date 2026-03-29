@@ -50,6 +50,145 @@ body {
 }
 
 /* ============================================================
+   TUNNEL EVENT LAYER — building purchase animations
+   ============================================================ */
+#tunnel-event-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* Base piece — every event element shares this */
+.te {
+  position: absolute;
+  font-size: 2.8rem;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
+}
+
+/* ── Zoom from tunnel depth (cursor, farm, bank, alchemy) ── */
+.te-zoom {
+  animation: te-zoom 1.5s cubic-bezier(0.22, 0, 0.5, 1) forwards;
+}
+@keyframes te-zoom {
+  0%   { transform: translate(-50%, -50%) scale(0.03); opacity: 0; }
+  14%  { opacity: 1; }
+  62%  { transform: translate(-50%, -50%) scale(1.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+}
+
+/* ── Zoom + slow spin (factory, wizard) ── */
+.te-zoom-spin {
+  animation: te-zoom-spin 1.7s cubic-bezier(0.22, 0, 0.5, 1) forwards;
+}
+@keyframes te-zoom-spin {
+  0%   { transform: translate(-50%, -50%) scale(0.03) rotate(0deg); opacity: 0; }
+  14%  { opacity: 1; }
+  62%  { transform: translate(-50%, -50%) scale(1.2) rotate(270deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.6) rotate(450deg); opacity: 0; }
+}
+
+/* ── Scatter outward from center (mine, farm extras) ── */
+.te-scatter {
+  animation: te-scatter 1.4s ease-out forwards;
+}
+.te-scatter-fast {
+  animation: te-scatter 0.85s ease-out forwards;
+}
+@keyframes te-scatter {
+  0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(0.25); opacity: 0; }
+  14%  { opacity: 1; }
+  100% { transform: translate(-50%, -50%) translate(calc(var(--tx, 30px) * 7), calc(var(--ty, 30px) * 7)) scale(1.1); opacity: 0; }
+}
+
+/* ── Float upward (factory smoke) ── */
+.te-float-up {
+  animation: te-float-up 1.4s ease-out forwards;
+}
+@keyframes te-float-up {
+  0%   { transform: translate(-50%, -50%) translateX(var(--tx, 0px)) scale(0.3); opacity: 0; }
+  22%  { opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) translateX(calc(var(--tx, 0px) * 1.4)) translateY(-55vh) scale(1.7); opacity: 0; }
+}
+
+/* ── Coin arc & fall (bank) ── */
+.te-coin-fall {
+  font-size: 2rem;
+  animation: te-coin-fall 1.7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+@keyframes te-coin-fall {
+  0%   { transform: translate(-50%, -50%) translateX(var(--tx, 0px)) scale(0.4) translateY(0px)   rotate(var(--rot, 0deg)); opacity: 1; }
+  35%  { transform: translate(-50%, -50%) translateX(var(--tx, 0px)) scale(1.1) translateY(-28vh) rotate(var(--rot, 0deg)); opacity: 1; }
+  100% { transform: translate(-50%, -50%) translateX(var(--tx, 0px)) scale(0.7) translateY(45vh)  rotate(calc(var(--rot, 0deg) + 360deg)); opacity: 0; }
+}
+
+/* ── Temple: golden sun-ray beams ── */
+.te-ray-beam {
+  position: absolute;
+  width: 7px;
+  height: 44vh;
+  background: linear-gradient(to top, rgba(200,164,90,0.9) 0%, rgba(255,210,80,0.55) 35%, transparent 100%);
+  transform-origin: 50% 100%;   /* rotate from bottom = center of screen */
+  animation: te-ray 1.5s ease-out forwards;
+}
+@keyframes te-ray {
+  0%   { transform: translateX(-50%) rotate(var(--rot, 0deg)) scaleX(0.5) scaleY(0);   opacity: 0; }
+  20%  { transform: translateX(-50%) rotate(var(--rot, 0deg)) scaleX(1.1) scaleY(0.6); opacity: 0.9; }
+  60%  { transform: translateX(-50%) rotate(var(--rot, 0deg)) scaleX(1)   scaleY(1);   opacity: 0.6; }
+  100% { transform: translateX(-50%) rotate(var(--rot, 0deg)) scaleX(0.4) scaleY(1.2); opacity: 0; }
+}
+
+/* ── Wizard stars orbit outward in widening spiral ── */
+.te-orbit-out {
+  font-size: 1.6rem;
+  animation: te-orbit-out 1.7s ease-in forwards;
+}
+@keyframes te-orbit-out {
+  0%   { transform: translate(-50%, -50%) rotate(var(--rot, 0deg)) translateX(var(--r, 40px)) scale(0.3); opacity: 0; }
+  18%  { opacity: 1; }
+  70%  { opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) rotate(calc(var(--rot, 0deg) + 600deg)) translateX(calc(var(--r, 40px) * 5.5)) scale(0.08); opacity: 0; }
+}
+
+/* ── Rocket streak from tunnel core ── */
+.te-rocket {
+  animation: te-rocket 1.9s cubic-bezier(0.3, 0, 0.6, 1) forwards;
+}
+@keyframes te-rocket {
+  0%   { transform: translate(-50%, -50%) scale(0.03) rotate(-42deg); opacity: 0; filter: blur(8px); }
+  10%  { opacity: 1; filter: blur(0); }
+  60%  { transform: translate(-50%, -50%) scale(1.6)  rotate(-42deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(3.4)  rotate(-42deg) translateX(40vw) translateY(-38vh); opacity: 0; }
+}
+
+/* Rocket fire trail */
+.te-trail {
+  font-size: 1.5rem;
+  animation: te-trail 1.5s ease-out forwards;
+}
+@keyframes te-trail {
+  0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(1); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) translate(var(--tx, 0px), var(--ty, 0px)) scale(0.08); opacity: 0; }
+}
+
+/* ── Alchemy bubbles float up ── */
+.te-bubble-up {
+  font-size: 1.9rem;
+  animation: te-bubble-up 2s ease-out forwards;
+}
+@keyframes te-bubble-up {
+  0%   { transform: translate(-50%, -50%) translateX(var(--tx, 0px)) scale(0.2); opacity: 0; }
+  22%  { opacity: 0.95; transform: translate(-50%, -50%) translateX(var(--tx, 0px)) scale(1); }
+  80%  { opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) translateX(calc(var(--tx, 0px) * 1.3)) translateY(-58vh) scale(2.1); opacity: 0; }
+}
+
+/* ============================================================
    VIDEO BACKGROUND (optional — hides canvas when active)
    ============================================================ */
 #bg-video {
@@ -429,15 +568,15 @@ aside {
   letter-spacing: 0.1em;
 }
 
-/* Stats panel */
+/* Stats panel — lives in buildings sidebar */
 #stats-panel {
   width: 100%;
-  max-width: 320px;
   background: var(--bg-card);
-  border: 1px solid #2a2a4a;
-  border-radius: 6px;
+  border-top: 1px solid #2a2a4a;
+  border-bottom: 1px solid #2a2a4a;
   font-size: 0.75rem;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 #stats-panel summary {
@@ -702,13 +841,19 @@ aside {
     grid-row: 1;
     padding: 10px;
     padding-bottom: 66px;
-    justify-content: flex-start;
+    justify-content: center;
+    align-items: center;
     overflow-y: auto;
-    gap: 10px;
+    gap: 8px;
   }
 
-  #click-area  { width: 190px; height: 190px; }
-  #main-object { width: 160px; height: 160px; }
+  #stats-bar, #cps-display, #click-hint, #active-effects {
+    text-align: center;
+    width: 100%;
+  }
+
+  #click-area  { width: 200px; height: 200px; }
+  #main-object { width: 170px; height: 170px; }
 
   /* Sidebars become full-screen slide-in overlays */
   #sidebar-upgrades,
@@ -784,8 +929,8 @@ aside {
   .mobile-tab-icon  { font-size: 1.25rem; line-height: 1; }
   .mobile-tab-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em; }
 
-  /* Stats panel full width in sidebar */
-  #stats-panel { width: 100%; }
+  /* Stats panel already in sidebar — ensure full width */
+  #stats-panel { width: 100%; border-radius: 0; border-left: none; border-right: none; }
 }
 
 /* ============================================================

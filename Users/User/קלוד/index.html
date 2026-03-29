@@ -22,6 +22,9 @@
 <!-- קנבס רקע — מנהרת ספירלה -->
 <canvas id="bg-canvas"></canvas>
 
+<!-- שכבת אירועי מנהרה — אנימציות בניינים -->
+<div id="tunnel-event-layer"></div>
+
 <!-- וידאו רקע (אופציונלי — מחליף את הקנבס אם מוגדר) -->
 <video id="bg-video" autoplay muted loop playsinline></video>
 
@@ -54,6 +57,12 @@
     </div>
 
     <div id="click-hint" data-he="לחץ!" data-en="Click!">לחץ!</div>
+  </main>
+
+  <!-- עמודה ימנית — בניינים + שמירה -->
+  <aside id="sidebar-buildings">
+    <h2 class="panel-title" data-he="בניינים" data-en="Buildings">בניינים</h2>
+    <div id="buildings-panel"></div>
 
     <!-- סטטיסטיקות -->
     <details id="stats-panel">
@@ -65,12 +74,6 @@
         <div><span data-he="הישגים: " data-en="Achievements: ">הישגים: </span><span id="stat-achievements">0</span></div>
       </div>
     </details>
-  </main>
-
-  <!-- עמודה ימנית — בניינים + שמירה -->
-  <aside id="sidebar-buildings">
-    <h2 class="panel-title" data-he="בניינים" data-en="Buildings">בניינים</h2>
-    <div id="buildings-panel"></div>
 
     <div id="save-controls">
       <button id="btn-save" data-he="שמור" data-en="Save">שמור</button>

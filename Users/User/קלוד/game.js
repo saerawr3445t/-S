@@ -555,6 +555,7 @@ function buyBuilding(id) {
   state.buildings[id] = (state.buildings[id] || 0) + 1;
   recomputeCps();
   playSound('purchase');
+  fireTunnelEvent(id);
   scheduleRender();
   checkAchievements();
 }
@@ -1118,7 +1119,180 @@ function handleOfflineEarnings() {
 }
 
 // ============================================================
-// SECTION 25 — SPIRAL TUNNEL BACKGROUND
+// SECTION 25 — TUNNEL EVENT ANIMATIONS
+// ============================================================
+
+// Per-building event definitions
+const TUNNEL_EVENTS = {
+  cursor:   { main: '🖱️', type: 'trail',   extras: ['🖱️','🖱️','🖱️','🖱️'] },
+  farm:     { main: '🌾', type: 'sprout',  extras: ['🌾','🌻','🌾','🌾','🌻','🌾','🌿'] },
+  mine:     { main: '⛏️', type: 'explode', extras: ['🪨','💎','🪨','🪨','💎','🪨','🪨','💥'] },
+  factory:  { main: '🏭', type: 'factory', extras: ['☁️','☁️','☁️','⚙️'] },
+  bank:     { main: '🏦', type: 'coins',   extras: ['🪙','💰','🪙','🪙','💰','🪙','🪙','💰','🪙','🪙','💰','🪙'] },
+  temple:   { main: '🛕', type: 'rays',    extras: [] },
+  wizard:   { main: '🔮', type: 'orbit',   extras: ['✨','⭐','✨','🌟','✨','⭐','✨','🌟'] },
+  shipment: { main: '🚀', type: 'rocket',  extras: ['🔥','🔥','✨','🔥','🔥'] },
+  alchemy:  { main: '⚗️', type: 'bubbles', extras: ['🔵','🟢','🟡','🟠','🔴','🟣'] },
+};
+
+function fireTunnelEvent(buildingId) {
+  const layer = document.getElementById('tunnel-event-layer');
+  if (!layer) return;
+  const ev = TUNNEL_EVENTS[buildingId];
+  if (!ev) return;
+
+  const W  = window.innerWidth;
+  const H  = window.innerHeight;
+  const cx = W / 2;
+  const cy = H / 2;
+
+  // Container for this event — removed after longest animation
+  const container = document.createElement('div');
+  container.style.cssText = 'position:absolute;inset:0;pointer-events:none;';
+  layer.appendChild(container);
+
+  // Helper: create one emoji element
+  function piece(emoji, x, y, animClass, delay, cssVars) {
+    const el = document.createElement('div');
+    el.className = 'te ' + animClass;
+    el.textContent = emoji;
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+    if (delay) el.style.animationDelay = delay + 'ms';
+    if (cssVars) {
+      for (const [k, v] of Object.entries(cssVars)) {
+        el.style.setProperty(k, v);
+      }
+    }
+    container.appendChild(el);
+    return el;
+  }
+
+  switch (ev.type) {
+
+    // Cursor: 5 copies trail out like motion-blur streaks from depth
+    case 'trail': {
+      for (let i = 0; i < 5; i++) {
+        const p = piece(ev.main, cx + (i - 2) * 4, cy + (i - 2) * 4, 'te-zoom', i * 55);
+        p.style.filter = `blur(${i * 0.5}px)`;
+        p.style.opacity = String(1 - i * 0.16);
+      }
+      break;
+    }
+
+    // Farm: main zooms out while wheat stalks scatter like seeds
+    case 'sprout': {
+      piece(ev.main, cx, cy, 'te-zoom', 0);
+      ev.extras.forEach((emoji, i) => {
+        const angle = (i / ev.extras.length) * Math.PI * 2 - Math.PI / 2;
+        const dist  = 18 + i * 6;
+        piece(emoji, cx, cy, 'te-scatter', 80 + i * 55, {
+          '--tx': (Math.cos(angle) * dist) + 'px',
+          '--ty': (Math.sin(angle) * dist) + 'px',
+        });
+      });
+      break;
+    }
+
+    // Mine: center explosion + 8 rocks scatter in all directions
+    case 'explode': {
+      piece(ev.main, cx, cy, 'te-zoom', 0);
+      ev.extras.forEach((emoji, i) => {
+        const angle = (i / ev.extras.length) * Math.PI * 2;
+        const dist  = 16 + (i % 3) * 10;
+        piece(emoji, cx, cy, 'te-scatter-fast', i * 28, {
+          '--tx': (Math.cos(angle) * dist) + 'px',
+          '--ty': (Math.sin(angle) * dist) + 'px',
+        });
+      });
+      break;
+    }
+
+    // Factory: spins in while smoke puffs drift upward
+    case 'factory': {
+      piece(ev.main, cx, cy, 'te-zoom-spin', 0);
+      ev.extras.forEach((emoji, i) => {
+        const xOff = (i - ev.extras.length / 2) * 26;
+        piece(emoji, cx + xOff, cy - 10, 'te-float-up', 250 + i * 180, {
+          '--tx': (xOff * 0.3) + 'px',
+        });
+      });
+      break;
+    }
+
+    // Bank: coin fountain arcs up from center then rains down
+    case 'coins': {
+      piece(ev.main, cx, cy, 'te-zoom', 0);
+      ev.extras.forEach((emoji, i) => {
+        const spread = (i - ev.extras.length / 2) * 22;
+        piece(emoji, cx, cy, 'te-coin-fall', i * 55, {
+          '--tx':  spread + 'px',
+          '--rot': (Math.random() * 50 - 25) + 'deg',
+        });
+      });
+      break;
+    }
+
+    // Temple: 8 golden sun-ray beams burst outward, then main emoji zooms
+    case 'rays': {
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * 360;
+        const ray   = document.createElement('div');
+        ray.className = 'te te-ray-beam';
+        ray.style.left = cx + 'px';
+        ray.style.top  = cy + 'px';
+        ray.style.setProperty('--rot', angle + 'deg');
+        ray.style.animationDelay = (i * 35) + 'ms';
+        container.appendChild(ray);
+      }
+      piece(ev.main, cx, cy, 'te-zoom', 220);
+      break;
+    }
+
+    // Wizard: main spins in while 8 stars spiral outward
+    case 'orbit': {
+      piece(ev.main, cx, cy, 'te-zoom-spin', 0);
+      ev.extras.forEach((emoji, i) => {
+        const baseAngle = (i / ev.extras.length) * 360;
+        piece(emoji, cx, cy, 'te-orbit-out', i * 75, {
+          '--rot': baseAngle + 'deg',
+          '--r':   (36 + i * 11) + 'px',
+        });
+      });
+      break;
+    }
+
+    // Shipment: rocket streaks from tunnel center outward, fire trail follows
+    case 'rocket': {
+      piece(ev.main, cx, cy, 'te-rocket', 0);
+      ev.extras.forEach((emoji, i) => {
+        piece(emoji, cx, cy, 'te-trail', 60 + i * 65, {
+          '--tx': (-i * 18) + 'px',
+          '--ty':  (i * 18) + 'px',
+        });
+      });
+      break;
+    }
+
+    // Alchemy: colored bubbles float up from center like boiling liquid
+    case 'bubbles': {
+      piece(ev.main, cx, cy, 'te-zoom', 0);
+      ev.extras.forEach((emoji, i) => {
+        const xOff = (Math.random() - 0.5) * 90;
+        piece(emoji, cx, cy, 'te-bubble-up', 100 + i * 110, {
+          '--tx': xOff + 'px',
+        });
+      });
+      break;
+    }
+  }
+
+  // Remove container after all animations finish (~2.4s)
+  setTimeout(() => container.remove(), 2500);
+}
+
+// ============================================================
+// SECTION 27 — SPIRAL TUNNEL BACKGROUND
 // ============================================================
 function initTunnelBackground() {
   const canvas = document.getElementById('bg-canvas');
@@ -1262,7 +1436,7 @@ function init() {
   initMobileNav();
 }
 
-/* ── SECTION 26: Mobile Nav ─────────────────────────────────────── */
+/* ── SECTION 28: Mobile Nav ─────────────────────────────────────── */
 function initMobileNav() {
   const nav = document.getElementById('mobile-nav');
   if (!nav) return;

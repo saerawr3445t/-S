@@ -994,11 +994,14 @@ function applyAssets() {
     const el  = document.getElementById('audio-' + name);
     if (src && el) el.src = src;
   });
-  // Video background
+  // Video background — hides the canvas tunnel when active
   if (ASSETS.video.background) {
     const v = document.getElementById('bg-video');
     v.src = ASSETS.video.background;
     v.play().catch(() => {});
+    document.body.classList.add('has-video');
+    const bgCanvas = document.getElementById('bg-canvas');
+    if (bgCanvas) bgCanvas.style.display = 'none';
   }
 }
 
@@ -1115,9 +1118,114 @@ function handleOfflineEarnings() {
 }
 
 // ============================================================
-// SECTION 25 — INIT
+// SECTION 25 — SPIRAL TUNNEL BACKGROUND
+// ============================================================
+function initTunnelBackground() {
+  const canvas = document.getElementById('bg-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  // Resize canvas to fill window
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Tunnel config
+  const NUM_RINGS  = 22;   // number of concentric rings
+  const NUM_SPOKES = 8;    // lines connecting rings
+  const SPEED      = 0.38; // zoom-through speed (rings per second)
+  const TWIST      = 0.55; // spiral rotation speed (rad/sec)
+
+  // Precompute spoke offsets so they stay stable per ring index
+  function drawFrame(ts) {
+    const t  = ts / 1000;
+    const W  = canvas.width;
+    const H  = canvas.height;
+    const cx = W / 2;
+    const cy = H / 2;
+    const maxR = Math.hypot(W, H) * 0.56;
+
+    // ── Background fill (dark, with motion-blur trail) ────
+    ctx.fillStyle = 'rgba(6, 6, 15, 0.94)';
+    ctx.fillRect(0, 0, W, H);
+
+    // ── Rings (drawn innermost → outermost) ───────────────
+    for (let i = 0; i < NUM_RINGS; i++) {
+      // phase 0 = far center, 1 = near edge
+      const raw   = ((i / NUM_RINGS) + t * SPEED) % 1.0;
+      // ease-in-quad: slow near centre (depth compression)
+      const phase = raw * raw;
+      const r     = maxR * phase;
+      // Each ring rotates; outer rings have accumulated more rotation
+      const rot   = t * TWIST + i * (Math.PI / NUM_RINGS);
+
+      // Color: cycles blue → purple → gold to match game palette
+      const hue   = 205 + Math.sin(t * 0.2 + i * 0.4) * 40; // 165‥245
+      const sat   = 75 + phase * 20;
+      const light = 38  + phase * 38;                          // dim far, bright near
+      const alpha = 0.25 + phase * 0.72;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      // ── Ring circle ─────────────────────────────────────
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
+      ctx.lineWidth   = 1.5 + phase * 2.5;
+      ctx.stroke();
+
+      // ── Spokes (connect this ring to the next one) ──────
+      if (i < NUM_RINGS - 1) {
+        const raw2    = (((i + 1) / NUM_RINGS) + t * SPEED) % 1.0;
+        const phase2  = raw2 * raw2;
+        const r2      = maxR * phase2;
+        const rot2    = t * TWIST + (i + 1) * (Math.PI / NUM_RINGS);
+
+        for (let s = 0; s < NUM_SPOKES; s++) {
+          const a1 = rot  + (s / NUM_SPOKES) * Math.PI * 2;
+          const a2 = rot2 + (s / NUM_SPOKES) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(a1) * r,  Math.sin(a1) * r);
+          ctx.lineTo(Math.cos(a2) * r2, Math.sin(a2) * r2);
+          ctx.strokeStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha * 0.45})`;
+          ctx.lineWidth   = 0.8;
+          ctx.stroke();
+        }
+      }
+
+      ctx.restore();
+    }
+
+    // ── Central vanishing-point glow (golden, matches game) ─
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR * 0.35);
+    g.addColorStop(0,   'rgba(200, 164, 90, 0.35)');
+    g.addColorStop(0.3, 'rgba(200, 164, 90, 0.10)');
+    g.addColorStop(1,   'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    // ── Dark vignette at edges (depth) ───────────────────
+    const v = ctx.createRadialGradient(cx, cy, maxR * 0.35, cx, cy, maxR);
+    v.addColorStop(0, 'rgba(0,0,0,0)');
+    v.addColorStop(1, 'rgba(0,0,0,0.82)');
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, W, H);
+
+    requestAnimationFrame(drawFrame);
+  }
+
+  requestAnimationFrame(drawFrame);
+}
+
+// ============================================================
+// SECTION 26 — INIT
 // ============================================================
 function init() {
+  initTunnelBackground();
   applyAssets();
   loadGame();
   handleOfflineEarnings();

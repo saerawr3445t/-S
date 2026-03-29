@@ -619,9 +619,12 @@ function tick() {
       lastBuildingFlash[b.id] = now;
       const row = document.querySelector(`[data-building-id="${b.id}"]`);
       if (row) {
+        const work = row.querySelector('.b-work');
+        if (work) work.classList.remove('bw-produce');
         row.classList.remove('tick-flash');
         void row.offsetWidth;
         row.classList.add('tick-flash');
+        if (work) work.classList.add('bw-produce');
       }
     }
   }
@@ -874,6 +877,7 @@ function renderBuildings() {
     row.querySelector('.b-count').textContent = owned;
     row.querySelector('.b-cost').textContent  = t('cost') + fmt(cost);
     row.classList.toggle('affordable-no', state.clicks < cost);
+    row.classList.toggle('owned', owned > 0);
   }
 }
 
@@ -916,6 +920,20 @@ function renderSaveInfo() {
 // ============================================================
 // SECTION 16 — DOM BUILDERS
 // ============================================================
+
+// HTML content for each building's mini work-area scene
+const WORK_AREA_HTML = {
+  cursor:   '<span class="bw-ptr">🖱️</span><span class="bw-dot"></span>',
+  farm:     '<span class="bw-plant p1">🌱</span><span class="bw-plant p2">🌿</span><span class="bw-plant p3">🌾</span>',
+  mine:     '<span class="bw-pick">⛏️</span><span class="bw-ore">🪨</span>',
+  factory:  '<span class="bw-belt"></span><span class="bw-box">📦</span>',
+  bank:     '<span class="bw-coin">🪙</span>',
+  temple:   '<span class="bw-flame">🕯️</span><span class="bw-smoke sm1"></span><span class="bw-smoke sm2"></span><span class="bw-smoke sm3"></span>',
+  wizard:   '<span class="bw-star st1">✨</span><span class="bw-star st2">⭐</span><span class="bw-star st3">🌟</span>',
+  shipment: '<span class="bw-stars"></span><span class="bw-rocket">🚀</span>',
+  alchemy:  '<span class="bw-flask">⚗️</span><span class="bw-bub bu1"></span><span class="bw-bub bu2"></span><span class="bw-bub bu3"></span>',
+};
+
 function buildBuildingRows() {
   const panel = document.getElementById('buildings-panel');
   panel.innerHTML = '';
@@ -935,6 +953,12 @@ function buildBuildingRows() {
       <div class="b-count">0</div>
       <div class="b-cost"></div>
     `;
+    // Work area (mini production scene, shown when owned)
+    const work = document.createElement('div');
+    work.className = 'b-work';
+    work.innerHTML = WORK_AREA_HTML[b.id] || '';
+    row.appendChild(work);
+
     panel.appendChild(row);
   }
 }

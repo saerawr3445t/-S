@@ -34,7 +34,7 @@ const ASSETS = {
 };
 
 const CONFIG = {
-  saveKey:           'clicker_save_v2',
+  saveKey:           'clicker_save_v1',
   tickRateMs:        100,
   autosaveIntervalS: 30,
   particleCount:     8,
@@ -45,16 +45,8 @@ const CONFIG = {
   goldenMinMs:       240000,  // 4 דקות
   goldenMaxMs:       480000,  // 8 דקות
   goldenDurationMs:  15000,
+  goldenMultiplier:  777,
   offlineCapHours:   24,
-  // Combo
-  comboDecayMs:      2500,    // זמן לפני איפוס קומבו
-  comboMax:          10,      // קומבו מקסימלי
-  comboThresholds:   [3,5,8,10], // קומבו לשיפור מכפיל
-  // Critical
-  critChance:        0.08,    // 8% סיכוי לקריטי
-  critMultiplier:    5,       // ×5 נזק בסיסי
-  critSuperChance:   0.02,    // 2% סיכוי לסופר-קריטי
-  critSuperMult:     20,      // ×20
 };
 
 // ============================================================
@@ -90,14 +82,6 @@ const STRINGS = {
     goldenLucky:        '🍀 מזל! +{n}!',
     goldenFrenzyActive: '⚡ הזיה פעילה',
     goldenClickFrenzyActive: '🖱️ קליק טורף פעיל',
-    comboActive:        '⚡ קומבו ×{m}!',
-    comboBreak:         '💔 קומבו אבד',
-    critHit:            '💥 קריטי! ×{m}',
-    milestone1k:        '🎉 אלף קליקים! המשחק מתחיל!',
-    milestone1m:        '🔥 מיליון! אתה בוער!',
-    milestone1b:        '🚀 מיליארד! אלוף!',
-    milestone1t:        '👑 טריליון! אגדי!',
-    nextGoal:           'יעד: {n}',
     prestigeDone:  '✦ עלית לדרגה! מכפיל: ×{m}',
     exportDone:    'נשמר ללוח',
     importPrompt:  'הדבק את קוד הייבוא:',
@@ -132,14 +116,6 @@ const STRINGS = {
     goldenLucky:        '🍀 Lucky! +{n}!',
     goldenFrenzyActive: '⚡ Frenzy active',
     goldenClickFrenzyActive: '🖱️ Click Frenzy active',
-    comboActive:        '⚡ Combo ×{m}!',
-    comboBreak:         '💔 Combo lost',
-    critHit:            '💥 Critical! ×{m}',
-    milestone1k:        '🎉 1K clicks! Game on!',
-    milestone1m:        '🔥 1 Million! You\'re on fire!',
-    milestone1b:        '🚀 1 Billion! Legend!',
-    milestone1t:        '👑 1 Trillion! Godlike!',
-    nextGoal:           'Goal: {n}',
     prestigeDone:  '✦ Prestiged! Multiplier: ×{m}',
     exportDone:    'Copied to clipboard',
     importPrompt:  'Paste save code:',
@@ -441,55 +417,6 @@ const UPGRADES = [
     unlockWhen: s => s.totalClicks >= 10000000,
     apply: s => { s.clickMultiplier *= 10; }
   },
-  // --- קומבו / קריטי (שדרוגים מיוחדים) ---
-  {
-    id: 'combo_booster',
-    nameHe: 'אצבעות מהירות', nameEn: 'Quick Fingers',
-    descHe: 'זמן קומבו ×1.5 ארוך יותר.', descEn: 'Combo window lasts ×1.5 longer.',
-    cost: 2000,
-    unlockWhen: s => s.totalClicks >= 50,
-    apply: s => { s.comboWindowMult = (s.comboWindowMult || 1) * 1.5; }
-  },
-  {
-    id: 'crit_chance_up',
-    nameHe: 'עין חדה', nameEn: 'Sharp Eye',
-    descHe: 'סיכוי קריטי +5%.', descEn: 'Critical chance +5%.',
-    cost: 50000,
-    unlockWhen: s => s.totalClicks >= 500,
-    apply: s => { s.bonusCritChance = (s.bonusCritChance || 0) + 0.05; }
-  },
-  {
-    id: 'crit_mult_up',
-    nameHe: 'מכה עצומה', nameEn: 'Mega Strike',
-    descHe: 'קריטי פי 2 חזק יותר.', descEn: 'Critical hits are ×2 stronger.',
-    cost: 500000,
-    unlockWhen: s => s.totalClicks >= 10000,
-    apply: s => { s.critMultBonus = (s.critMultBonus || 1) * 2; }
-  },
-  {
-    id: 'cps_10pct_click',
-    nameHe: 'פסיבי פעיל', nameEn: 'Passive Punch',
-    descHe: '10% מה-CPS נוסף לכל קליק.', descEn: '10% of CPS added per click.',
-    cost: 150000,
-    unlockWhen: s => s.cps >= 10,
-    apply: s => { s.cpsTapBonus = (s.cpsTapBonus || 0) + 0.10; }
-  },
-  {
-    id: 'every50clicks',
-    nameHe: 'קצב קבוע', nameEn: 'Steady Rhythm',
-    descHe: 'כל 50 קליקים = בונוס פי 3.', descEn: 'Every 50 clicks gives a ×3 bonus.',
-    cost: 25000,
-    unlockWhen: s => s.totalClicks >= 200,
-    apply: s => { s.every50bonus = true; }
-  },
-  {
-    id: 'combo_crit_synergy',
-    nameHe: 'סינרגיה', nameEn: 'Synergy',
-    descHe: 'קומבו מגדיל סיכוי קריטי.', descEn: 'Combo increases crit chance.',
-    cost: 5000000,
-    unlockWhen: s => s.totalClicks >= 100000,
-    apply: s => { s.comboCritSynergy = true; }
-  },
 ];
 
 // ============================================================
@@ -544,31 +471,15 @@ let state = {
   achievements:     {},
   totalClicks:      0,
   manualClicks:     0,
-  critCount:        0,
-  maxCombo:         0,
   goldenClicks:          0,
   clickFrenzyEndTime:    0,
   frenzyEndTime:         0,
   prestigeCount:         0,
-  prestigeMultiplier:    1,
-  // special upgrade flags
-  comboWindowMult:  1,
-  bonusCritChance:  0,
-  critMultBonus:    1,
-  cpsTapBonus:      0,
-  every50bonus:     false,
-  comboCritSynergy: false,
-  // milestone tracking
-  milestonesSeen:   {},
+  prestigeMultiplier: 1,
   startTime:        Date.now(),
   lastSaveTime:     null,
   lastTickTime:     Date.now(),
 };
-
-// ── Combo runtime (not saved) ──
-let combo = 0;
-let comboTimer = null;
-let lastComboTime = 0;
 
 // ============================================================
 // SECTION 7 — SAVE / LOAD
@@ -646,8 +557,6 @@ function buyBuilding(id) {
   playSound('purchase');
   scheduleRender();
   checkAchievements();
-  tunnelAnimate(id, b.emoji);
-  screenFlash('flash-gold');
 }
 
 function buyUpgrade(id) {
@@ -673,10 +582,8 @@ function checkAchievements() {
       state.achievements[a.id] = true;
       showToast((CONFIG.language === 'he' ? a.nameHe : a.nameEn), a.icon);
       playSound('milestone');
-      tunnelAnimate('achievement', a.icon);
     }
   }
-  checkMilestones();
 }
 
 // ============================================================
@@ -702,7 +609,7 @@ function tick() {
 
   renderActiveEffects();
 
-  // Building tick flash + tunnel animation (throttled per building)
+  // Building tick flash — flash once per second per building
   for (const b of BUILDINGS) {
     const owned = state.buildings[b.id] || 0;
     if (owned === 0) continue;
@@ -715,13 +622,6 @@ function tick() {
         void row.offsetWidth;
         row.classList.add('tick-flash');
       }
-      // Tunnel anim: show every N seconds based on building speed
-      const animInterval = Math.max(3000, 8000 - owned * 200);
-      const lastAnim = (lastBuildingFlash['_anim_' + b.id] || 0);
-      if (now - lastAnim >= animInterval) {
-        lastBuildingFlash['_anim_' + b.id] = now;
-        tunnelAnimate(b.id, b.emoji);
-      }
     }
   }
 
@@ -732,139 +632,30 @@ function tick() {
 // SECTION 11 — CLICK HANDLER
 // ============================================================
 function handleClick(e) {
-  const now = Date.now();
+  const clickFrenzyActive = state.clickFrenzyEndTime > 0 && Date.now() < state.clickFrenzyEndTime;
+  let gained = clickFrenzyActive ? Math.ceil(state.clickValue * 777) : state.clickValue;
 
-  // ── Click Frenzy ──
-  const clickFrenzyActive = state.clickFrenzyEndTime > 0 && now < state.clickFrenzyEndTime;
-
-  // ── Combo ──
-  const comboWindow = CONFIG.comboDecayMs * (state.comboWindowMult || 1);
-  if (now - lastComboTime < comboWindow) {
-    combo = Math.min(combo + 1, CONFIG.comboMax);
-  } else {
-    combo = 1;
-  }
-  lastComboTime = now;
-  clearTimeout(comboTimer);
-  comboTimer = setTimeout(() => {
-    if (combo > 2) showToast(t('comboBreak'), '💔');
-    combo = 0;
-    renderCombo();
-  }, comboWindow);
-  if (combo > state.maxCombo) state.maxCombo = combo;
-
-  // Combo multiplier: 1→1× | 3→1.5× | 5→2× | 8→3× | 10→5×
-  const comboMult = combo >= 10 ? 5 : combo >= 8 ? 3 : combo >= 5 ? 2 : combo >= 3 ? 1.5 : 1;
-
-  // ── Critical ──
-  let critMult = 1;
-  let isCrit = false;
-  let isSuperCrit = false;
-  const effectiveCritChance = CONFIG.critChance + (state.bonusCritChance || 0)
-    + (state.comboCritSynergy ? combo * 0.005 : 0);
-  const roll = Math.random();
-  if (roll < CONFIG.critSuperChance) {
-    critMult = CONFIG.critSuperMult * (state.critMultBonus || 1);
-    isSuperCrit = true; isCrit = true;
-  } else if (roll < effectiveCritChance) {
-    critMult = CONFIG.critMultiplier * (state.critMultBonus || 1);
-    isCrit = true;
-  }
-  if (isCrit) state.critCount = (state.critCount || 0) + 1;
-
-  // ── CPS tap bonus ──
-  const cpsTap = state.cps * (state.cpsTapBonus || 0);
-
-  // ── Base value ──
-  let base = state.clickValue + cpsTap;
-  if (clickFrenzyActive) base *= 777;
-
-  // ── Every-50-clicks bonus ──
-  let every50gain = 0;
-  if (state.every50bonus && state.manualClicks > 0 && (state.manualClicks + 1) % 50 === 0) {
-    every50gain = base * 3;
-  }
-
-  let gained = Math.ceil(base * comboMult * critMult) + every50gain;
-
-  state.clicks       += gained;
-  state.totalClicks  += 1;
+  state.clicks      += gained;
+  state.totalClicks += 1;
   state.manualClicks += 1;
 
-  // ── Particles & Animations ──
-  const label = isCrit ? '💥' + fmt(gained) : '+' + fmt(gained);
-  spawnParticles(e, label);
-
-  if (isSuperCrit) {
-    tunnelAnimate('critical', '💥');
-    showToast(t('critHit').replace('{m}', fmt(critMult)), '💥');
-    screenFlash('flash-gold');
-    shakeScreen();
-  } else if (isCrit) {
-    shakeScreen();
-  }
-
-  if (comboMult > 1) {
-    const el = document.getElementById('combo-mult');
-    if (el) { el.textContent = '×' + comboMult; }
-    if (combo === 3 || combo === 5 || combo === 8 || combo === 10) {
-      showToast(t('comboActive').replace('{m}', comboMult), '⚡');
-    }
-  }
-
-  renderCombo();
-  triggerClickAnim(isCrit);
+  spawnParticles(e, '+' + fmt(gained));
+  triggerClickAnim();
   playSound('click');
   scheduleRender();
   checkAchievements();
 }
 
-function triggerClickAnim(isCrit = false) {
+function triggerClickAnim() {
   const ring = document.getElementById('pulse-ring');
   ring.classList.remove('active');
   void ring.offsetWidth;
   ring.classList.add('active');
 
   const counter = document.getElementById('click-counter');
-  counter.classList.remove('bump', 'crit');
+  counter.classList.remove('bump');
   void counter.offsetWidth;
-  counter.classList.add(isCrit ? 'crit' : 'bump');
-}
-
-function shakeScreen() {
-  const app = document.getElementById('app');
-  app.classList.remove('shake');
-  void app.offsetWidth;
-  app.classList.add('shake');
-}
-
-function screenFlash(cls) {
-  const el = document.getElementById('screen-flash');
-  if (!el) return;
-  el.className = '';
-  void el.offsetWidth;
-  el.className = cls;
-}
-
-function renderCombo() {
-  const display = document.getElementById('combo-display');
-  const fill    = document.getElementById('combo-decay-fill');
-  const multEl  = document.getElementById('combo-mult');
-  const iconEl  = document.getElementById('combo-icon');
-  if (!display) return;
-  if (combo < 2) {
-    display.style.display = 'none';
-    return;
-  }
-  display.style.display = 'flex';
-  const comboMult = combo >= 10 ? 5 : combo >= 8 ? 3 : combo >= 5 ? 2 : combo >= 3 ? 1.5 : 1;
-  if (multEl) multEl.textContent = '×' + comboMult;
-  if (iconEl) iconEl.textContent = combo >= 8 ? '🔥' : combo >= 5 ? '⚡' : '💫';
-  // decay bar
-  const comboWindow = CONFIG.comboDecayMs * (state.comboWindowMult || 1);
-  const elapsed = Date.now() - lastComboTime;
-  const pct = Math.max(0, 100 - (elapsed / comboWindow) * 100);
-  if (fill) fill.style.width = pct + '%';
+  counter.classList.add('bump');
 }
 
 // ============================================================
@@ -975,7 +766,6 @@ function claimGoldenCookie() {
   }
 
   playSound('milestone');
-  tunnelAnimate('golden', '🍪');
   const el = document.getElementById('golden-cookie');
   if (el) el.classList.remove('visible');
   scheduleGoldenCookie();
@@ -991,8 +781,6 @@ function canPrestige() {
 
 function doPrestige() {
   if (!canPrestige()) return;
-  tunnelAnimate('prestige', '✦');
-  screenFlash('flash-blue');
   state.prestigeCount++;
   state.prestigeMultiplier = 1 + state.prestigeCount * 0.5;
 
@@ -1033,8 +821,6 @@ function renderAll() {
   renderUpgrades();
   renderPrestige();
   renderActiveEffects();
-  renderNextGoal();
-  renderCombo();
 }
 
 function renderActiveEffects() {
@@ -1071,10 +857,6 @@ function renderStats() {
   document.getElementById('stat-achievements').textContent =
     Object.values(state.achievements).filter(Boolean).length + ' / ' + ACHIEVEMENTS.length;
   document.getElementById('stat-upgrades').textContent = countUpgrades(state);
-  const mcEl = document.getElementById('stat-maxcombo');
-  if (mcEl) mcEl.textContent = state.maxCombo || 0;
-  const crEl = document.getElementById('stat-crits');
-  if (crEl) crEl.textContent = state.critCount || 0;
 
   const sec = Math.floor((Date.now() - state.startTime) / 1000);
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
@@ -1336,51 +1118,6 @@ function handleOfflineEarnings() {
 }
 
 // ============================================================
-// SECTION 25a — MILESTONE SYSTEM
-// ============================================================
-const MILESTONES = [
-  { id: 'm1k',  threshold: 1e3,  key: 'milestone1k', flash: 'flash-gold' },
-  { id: 'm1m',  threshold: 1e6,  key: 'milestone1m', flash: 'flash-gold' },
-  { id: 'm1b',  threshold: 1e9,  key: 'milestone1b', flash: 'flash-blue' },
-  { id: 'm1t',  threshold: 1e12, key: 'milestone1t', flash: 'flash-gold' },
-];
-
-function checkMilestones() {
-  for (const m of MILESTONES) {
-    if (!state.milestonesSeen[m.id] && state.totalClicks >= m.threshold) {
-      state.milestonesSeen[m.id] = true;
-      showToast(t(m.key), '🏆');
-      screenFlash(m.flash);
-      shakeScreen();
-      playSound('milestone');
-      tunnelAnimate('golden', '🏆');
-    }
-  }
-}
-
-// ============================================================
-// SECTION 25b — NEXT GOAL PROGRESS BAR
-// ============================================================
-const GOAL_THRESHOLDS = [
-  100, 500, 1000, 5000, 10000, 50000, 1e5, 5e5,
-  1e6, 5e6, 1e7, 5e7, 1e8, 5e8, 1e9, 5e9,
-  1e10, 5e10, 1e11, 5e11, 1e12
-];
-
-function renderNextGoal() {
-  const label = document.getElementById('next-goal-label');
-  const fill  = document.getElementById('next-goal-fill');
-  if (!label || !fill) return;
-  const tc = state.totalClicks;
-  const next = GOAL_THRESHOLDS.find(g => g > tc);
-  if (!next) { label.textContent = ''; fill.style.width = '100%'; return; }
-  const prev = GOAL_THRESHOLDS[GOAL_THRESHOLDS.indexOf(next) - 1] || 0;
-  const pct  = Math.min(100, ((tc - prev) / (next - prev)) * 100);
-  label.textContent = t('nextGoal').replace('{n}', fmt(next));
-  fill.style.width  = pct + '%';
-}
-
-// ============================================================
 // SECTION 25 — SPIRAL TUNNEL BACKGROUND
 // ============================================================
 function initTunnelBackground() {
@@ -1485,167 +1222,47 @@ function initTunnelBackground() {
 }
 
 // ============================================================
-// SECTION 27 — TUNNEL EVENT ANIMATIONS
+// SECTION 26 — INIT
 // ============================================================
-const TUNNEL_CONFIG = {
-  cursor:      { cls: 'te-cursor',   dur: 650,  sats: 'dots' },
-  farm:        { cls: 'te-farm',     dur: 1100, sats: 'wheat' },
-  mine:        { cls: 'te-mine',     dur: 950,  sats: 'sparks', shake: true },
-  factory:     { cls: 'te-factory',  dur: 1000, sats: 'gears' },
-  bank:        { cls: 'te-bank',     dur: 900,  sats: 'coins' },
-  temple:      { cls: 'te-temple',   dur: 1100, sats: 'beams' },
-  wizard:      { cls: 'te-wizard',   dur: 1000, sats: 'stars', flash: true },
-  shipment:    { cls: 'te-shipment', dur: 750,  sats: 'flames' },
-  alchemy:     { cls: 'te-alchemy',  dur: 1100, sats: 'orbs' },
-  achievement: { cls: 'te-achievement', dur: 1200, sats: 'dots' },
-  golden:      { cls: 'te-golden',   dur: 1000, sats: 'goldDots' },
-  critical:    { cls: 'te-critical', dur: 900,  sats: 'sparks' },
-  prestige:    { cls: null,          dur: 1600, sats: 'prestige' },
-};
+function init() {
+  initTunnelBackground();
+  applyAssets();
+  loadGame();
+  handleOfflineEarnings();
+  buildBuildingRows();
+  buildUpgradeCards();
+  wireEventListeners();
+  initParticlePool();
 
-function tunnelAnimate(type, emoji) {
-  const cfg = TUNNEL_CONFIG[type];
-  if (!cfg) return;
-  const layer = document.getElementById('tunnel-anim-layer');
-  if (!layer) return;
+  // Add prestige button and badge to buildings sidebar
+  const bSidebar = document.getElementById('sidebar-buildings');
+  const badge = document.createElement('div');
+  badge.id = 'prestige-badge';
+  const btnPrestige = document.createElement('button');
+  btnPrestige.id = 'btn-prestige';
+  btnPrestige.addEventListener('click', doPrestige);
+  bSidebar.insertBefore(badge, bSidebar.querySelector('#buildings-panel'));
+  bSidebar.insertBefore(btnPrestige, bSidebar.querySelector('#buildings-panel'));
 
-  const nodes = [];
+  recomputeCps();
+  applyLanguage(CONFIG.language);
+  renderAll();
+  renderSaveInfo();
 
-  // Prestige: special full-screen treatment
-  if (type === 'prestige') {
-    const overlay = document.createElement('div');
-    overlay.className = 'te-prestige-overlay';
-    layer.appendChild(overlay);
-    nodes.push(overlay);
-    // Stars imploding from edges
-    for (let i = 0; i < 14; i++) {
-      const s = document.createElement('div');
-      s.className = 'te-prestige-star';
-      s.textContent = '⭐';
-      const angle = (i / 14) * Math.PI * 2;
-      const dist  = 200 + Math.random() * 150;
-      s.style.setProperty('--px', Math.cos(angle) * dist + 'px');
-      s.style.setProperty('--py', Math.sin(angle) * dist + 'px');
-      s.style.setProperty('--delay', (i * 60) + 'ms');
-      s.style.left = '50%'; s.style.top = '50%';
-      layer.appendChild(s); nodes.push(s);
-    }
-    cleanup(nodes, cfg.dur + 200); return;
-  }
-
-  // Main emoji
-  const el = document.createElement('div');
-  el.className = 'tunnel-emoji ' + (cfg.cls || '');
-  el.textContent = emoji;
-  layer.appendChild(el); nodes.push(el);
-
-  // Screen effects
-  if (cfg.shake) shakeScreen();
-  if (cfg.flash) {
-    const fl = document.createElement('div');
-    fl.style.cssText = 'position:fixed;inset:0;background:#fff;pointer-events:none;z-index:3;animation:te-wizard-flash 800ms forwards;opacity:0;';
-    layer.appendChild(fl); nodes.push(fl);
-  }
-
-  // Satellite factory
-  spawnSatellites(cfg.sats, layer, nodes);
-  cleanup(nodes, cfg.dur + 100);
+  // Game tick
+  setInterval(tick, CONFIG.tickRateMs);
+  // Autosave
+  setInterval(saveGame, CONFIG.autosaveIntervalS * 1000);
+  // News ticker
+  nextNews();
+  setInterval(nextNews, 32000);
+  // Golden cookie
+  scheduleGoldenCookie();
+  // Mobile nav
+  initMobileNav();
 }
 
-function spawnSatellites(type, layer, nodes) {
-  const mk = (tag, cls) => { const e = document.createElement(tag); e.className = 'te-particle ' + cls; layer.appendChild(e); nodes.push(e); return e; };
-
-  if (type === 'dots') {
-    for (let i = 0; i < 5; i++) {
-      const d = mk('div', 'te-dot');
-      const a = Math.random() * Math.PI * 2;
-      const r = 40 + Math.random() * 50;
-      d.style.setProperty('--tx', Math.cos(a) * r + 'px');
-      d.style.setProperty('--ty', Math.sin(a) * r + 'px');
-      d.style.setProperty('--delay', (i * 80) + 'ms');
-      d.style.setProperty('--life', '650ms');
-    }
-  } else if (type === 'wheat') {
-    [-35, 0, 35].forEach((angle, i) => {
-      const w = mk('span', '');
-      w.textContent = '🌾'; w.style.fontSize = '1.6rem'; w.style.position = 'absolute';
-      w.style.left = '50%'; w.style.top = '50%';
-      w.style.animation = `te-dot-fly 1100ms ease-out ${i * 120}ms forwards`;
-      w.style.setProperty('--tx', Math.sin((angle * Math.PI / 180)) * 60 + 'px');
-      w.style.setProperty('--ty', -80 - Math.abs(angle) * 0.5 + 'px');
-      w.style.setProperty('--delay', (i * 100) + 'ms');
-    });
-  } else if (type === 'sparks') {
-    for (let i = 0; i < 8; i++) {
-      const s = mk('div', 'te-spark');
-      s.style.setProperty('--a', (i * 45) + 'deg');
-      s.style.setProperty('--delay', (i * 30) + 'ms');
-    }
-  } else if (type === 'gears') {
-    ['⚙️','⚙️','⚙️'].forEach((g, i) => {
-      const gear = mk('span', '');
-      gear.textContent = g; gear.style.fontSize = '1.2rem';
-      gear.style.position = 'absolute'; gear.style.left = '50%'; gear.style.top = '50%';
-      const a = (i / 3) * Math.PI * 2;
-      gear.style.animation = `te-coin-fly 1000ms ease-out ${i * 100}ms forwards`;
-      gear.style.setProperty('--a', (i * 120) + 'deg');
-      gear.style.setProperty('--r', (50 + i * 15) + 'px');
-      gear.style.setProperty('--delay', (i * 100) + 'ms');
-    });
-  } else if (type === 'coins') {
-    for (let i = 0; i < 5; i++) {
-      const c = mk('span', 'te-coin');
-      c.textContent = '🪙';
-      c.style.setProperty('--a', (i * 72) + 'deg');
-      c.style.setProperty('--r', (50 + Math.random() * 25) + 'px');
-      c.style.setProperty('--delay', (i * 80) + 'ms');
-    }
-  } else if (type === 'beams') {
-    for (let i = 0; i < 4; i++) {
-      const b = mk('div', 'te-beam');
-      b.style.setProperty('--a', (i * 90) + 'deg');
-      b.style.position = 'absolute'; b.style.left = '50%'; b.style.top = '50%';
-    }
-  } else if (type === 'stars') {
-    for (let i = 0; i < 6; i++) {
-      const s = mk('span', 'te-star');
-      s.textContent = '⭐';
-      s.style.setProperty('--a', (i * 60) + 'deg');
-      s.style.setProperty('--delay', (i * 70) + 'ms');
-    }
-  } else if (type === 'flames') {
-    for (let i = 0; i < 5; i++) {
-      const f = mk('div', 'te-flame');
-      f.style.setProperty('--ty', (i * 10 - 20) + 'px');
-      f.style.setProperty('--delay', (i * 60) + 'ms');
-    }
-  } else if (type === 'orbs') {
-    const colors = ['#a0ffb0','#80c0ff','#ffb0e0','#ffe080','#c0a0ff','#80ffe0'];
-    for (let i = 0; i < 6; i++) {
-      const o = mk('div', 'te-orb');
-      o.style.setProperty('--a', (i * 60) + 'deg');
-      o.style.setProperty('--c', colors[i]);
-      o.style.setProperty('--delay', (i * 80) + 'ms');
-    }
-  } else if (type === 'goldDots') {
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      const r = 60 + Math.random() * 60;
-      const d = mk('div', 'te-gold-dot');
-      d.style.setProperty('--tx', Math.cos(a) * r + 'px');
-      d.style.setProperty('--ty', Math.sin(a) * r + 'px');
-      d.style.setProperty('--delay', (i * 50) + 'ms');
-    }
-  }
-}
-
-function cleanup(nodes, ms) {
-  setTimeout(() => nodes.forEach(n => n.parentNode && n.parentNode.removeChild(n)), ms);
-}
-
-// ============================================================
-// SECTION 28 — MOBILE NAVIGATION
-// ============================================================
+/* ── SECTION 26: Mobile Nav ─────────────────────────────────────── */
 function initMobileNav() {
   const nav = document.getElementById('mobile-nav');
   if (!nav) return;
@@ -1690,49 +1307,6 @@ function initMobileNav() {
 
   if (backdrop) backdrop.addEventListener('click', activateGame);
   activateGame();
-}
-
-// ============================================================
-// SECTION 29 — INIT
-// ============================================================
-function init() {
-  initTunnelBackground();
-  applyAssets();
-  loadGame();
-  handleOfflineEarnings();
-  buildBuildingRows();
-  buildUpgradeCards();
-  wireEventListeners();
-  initParticlePool();
-
-  // Add prestige button and badge to buildings sidebar
-  const bSidebar = document.getElementById('sidebar-buildings');
-  const badge = document.createElement('div');
-  badge.id = 'prestige-badge';
-  const btnPrestige = document.createElement('button');
-  btnPrestige.id = 'btn-prestige';
-  btnPrestige.addEventListener('click', doPrestige);
-  bSidebar.insertBefore(badge, bSidebar.querySelector('#buildings-panel'));
-  bSidebar.insertBefore(btnPrestige, bSidebar.querySelector('#buildings-panel'));
-
-  recomputeCps();
-  applyLanguage(CONFIG.language);
-  renderAll();
-  renderSaveInfo();
-
-  // Game tick
-  setInterval(tick, CONFIG.tickRateMs);
-  // Autosave
-  setInterval(saveGame, CONFIG.autosaveIntervalS * 1000);
-  // News ticker
-  nextNews();
-  setInterval(nextNews, 32000);
-  // Golden cookie
-  scheduleGoldenCookie();
-  // Combo decay bar: refresh every 100ms while combo is active
-  setInterval(() => { if (combo > 0) renderCombo(); }, 100);
-  // Mobile nav
-  initMobileNav();
 }
 
 document.addEventListener('DOMContentLoaded', init);

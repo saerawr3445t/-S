@@ -25,12 +25,6 @@
 <!-- וידאו רקע (אופציונלי — מחליף את הקנבס אם מוגדר) -->
 <video id="bg-video" autoplay muted loop playsinline></video>
 
-<!-- שכבת אנימציות מנהרה -->
-<div id="tunnel-anim-layer" aria-hidden="true"></div>
-
-<!-- שכבת פלאש מסך (Milestone / Prestige) -->
-<div id="screen-flash" aria-hidden="true"></div>
-
 <!-- אפליקציה ראשית -->
 <div id="app">
 
@@ -51,20 +45,6 @@
     </div>
     <div id="active-effects"></div>
 
-    <!-- Combo + Progress bar -->
-    <div id="combo-bar-wrap">
-      <div id="combo-display" style="display:none">
-        <span id="combo-icon">⚡</span>
-        <span id="combo-mult">×1</span>
-        <div id="combo-decay-bar"><div id="combo-decay-fill"></div></div>
-      </div>
-    </div>
-
-    <div id="next-goal-wrap">
-      <div id="next-goal-label"></div>
-      <div id="next-goal-bar"><div id="next-goal-fill"></div></div>
-    </div>
-
     <div id="click-area">
       <div id="pulse-ring"></div>
       <div id="main-object">
@@ -74,14 +54,8 @@
     </div>
 
     <div id="click-hint" data-he="לחץ!" data-en="Click!">לחץ!</div>
-  </main>
 
-  <!-- עמודה ימנית — בניינים + סטטיסטיקות + שמירה -->
-  <aside id="sidebar-buildings">
-    <h2 class="panel-title" data-he="בניינים" data-en="Buildings">בניינים</h2>
-    <div id="buildings-panel"></div>
-
-    <!-- סטטיסטיקות (הועברו לכאן) -->
+    <!-- סטטיסטיקות -->
     <details id="stats-panel">
       <summary data-he="סטטיסטיקות" data-en="Stats">סטטיסטיקות</summary>
       <div id="stats-content">
@@ -89,10 +63,14 @@
         <div><span data-he="זמן משחק: " data-en="Play time: ">זמן משחק: </span><span id="stat-time">0:00</span></div>
         <div><span data-he="שדרוגים שנקנו: " data-en="Upgrades bought: ">שדרוגים שנקנו: </span><span id="stat-upgrades">0</span></div>
         <div><span data-he="הישגים: " data-en="Achievements: ">הישגים: </span><span id="stat-achievements">0</span></div>
-        <div><span data-he="קומבו מקסימלי: " data-en="Max combo: ">קומבו מקסימלי: </span><span id="stat-maxcombo">0</span></div>
-        <div><span data-he="קריטי: " data-en="Criticals: ">קריטי: </span><span id="stat-crits">0</span></div>
       </div>
     </details>
+  </main>
+
+  <!-- עמודה ימנית — בניינים + שמירה -->
+  <aside id="sidebar-buildings">
+    <h2 class="panel-title" data-he="בניינים" data-en="Buildings">בניינים</h2>
+    <div id="buildings-panel"></div>
 
     <div id="save-controls">
       <button id="btn-save" data-he="שמור" data-en="Save">שמור</button>

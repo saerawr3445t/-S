@@ -6,14 +6,19 @@
 // ============================================================
 const ASSETS = {
   images: {
-    mainObject: '',           // דוגמה: 'assets/images/cookie.png'
-    background: '',           // דוגמה: 'assets/images/bg.jpg'
+    mainObject:   '',         // דוגמה: 'assets/images/main.png'
+    background:   '',         // דוגמה: 'assets/images/bg.jpg'
+    goldenCookie: '',         // דוגמה: 'assets/images/golden.png'
     buildingIcons: {
-      cursor:  '',
-      farm:    '',
-      mine:    '',
-      factory: '',
-      bank:    '',
+      cursor:   '',
+      farm:     '',
+      mine:     '',
+      factory:  '',
+      bank:     '',
+      temple:   '',
+      wizard:   '',
+      shipment: '',
+      alchemy:  '',
     }
   },
   audio: {
@@ -21,6 +26,7 @@ const ASSETS = {
     purchase:  '',
     milestone: '',
     ambient:   '',
+    golden:    '',            // דוגמה: 'assets/audio/golden.mp3'
   },
   video: {
     background: '',           // דוגמה: 'assets/video/bg.mp4'
@@ -70,8 +76,12 @@ const STRINGS = {
     prestigeDesc:  'אפס את הכל תמורת ×{m} לנצח',
     offlineEarned: 'היית משם {t}. הרווחת {n}.',
     resetConfirm:  'בטוח שאתה רוצה לאפס? כל ההתקדמות תמחק!',
-    goldenAlert:   '✨ זהב! לחץ על האובייקט המנצנץ!',
-    goldenBonus:   '✨ בונוס זהב! +{n}',
+    goldenAppear:       '✨ עוגיית זהב! לחץ מהר!',
+    goldenClickFrenzy:  '🖱️ קליק טורף! ×777 לקליק ל-13 שניות!',
+    goldenFrenzy:       '⚡ הזיה! ×7 ייצור ל-77 שניות!',
+    goldenLucky:        '🍀 מזל! +{n}!',
+    goldenFrenzyActive: '⚡ הזיה פעילה',
+    goldenClickFrenzyActive: '🖱️ קליק טורף פעיל',
     prestigeDone:  '✦ עלית לדרגה! מכפיל: ×{m}',
     exportDone:    'נשמר ללוח',
     importPrompt:  'הדבק את קוד הייבוא:',
@@ -100,8 +110,12 @@ const STRINGS = {
     prestigeDesc:  'Reset all for ×{m} forever',
     offlineEarned: 'You were away {t}. Earned {n}.',
     resetConfirm:  'Are you sure you want to reset? All progress will be lost!',
-    goldenAlert:   '✨ Golden! Click the shining object!',
-    goldenBonus:   '✨ Golden bonus! +{n}',
+    goldenAppear:       '✨ Golden cookie! Click fast!',
+    goldenClickFrenzy:  '🖱️ Click Frenzy! ×777 clicks for 13s!',
+    goldenFrenzy:       '⚡ Frenzy! ×7 production for 77s!',
+    goldenLucky:        '🍀 Lucky! +{n}!',
+    goldenFrenzyActive: '⚡ Frenzy active',
+    goldenClickFrenzyActive: '🖱️ Click Frenzy active',
     prestigeDone:  '✦ Prestiged! Multiplier: ×{m}',
     exportDone:    'Copied to clipboard',
     importPrompt:  'Paste save code:',
@@ -169,6 +183,30 @@ const BUILDINGS = [
     nameHe: 'בנק', nameEn: 'Bank',
     descHe: 'קליקים מולידים קליקים.', descEn: 'Clicks beget clicks.',
     emoji: '🏦', baseCps: 40,   baseCost: 130000, costScale: 1.15,
+  },
+  {
+    id: 'temple',
+    nameHe: 'מקדש', nameEn: 'Temple',
+    descHe: 'האלים מתגמלים את הנאמנים.', descEn: 'The gods reward the faithful.',
+    emoji: '🛕', baseCps: 260,  baseCost: 20000000, costScale: 1.15,
+  },
+  {
+    id: 'wizard',
+    nameHe: 'מגדל קוסמים', nameEn: 'Wizard Tower',
+    descHe: 'קסם טהור הופך לקליקים.', descEn: 'Pure magic converted into clicks.',
+    emoji: '🔮', baseCps: 1600, baseCost: 330000000, costScale: 1.15,
+  },
+  {
+    id: 'shipment',
+    nameHe: 'משלוח', nameEn: 'Shipment',
+    descHe: 'קליקים מגיעים מהחלל החיצון.', descEn: 'Clicks shipped in from outer space.',
+    emoji: '🚀', baseCps: 10000, baseCost: 5100000000, costScale: 1.15,
+  },
+  {
+    id: 'alchemy',
+    nameHe: 'מעבדת אלכימיה', nameEn: 'Alchemy Lab',
+    descHe: 'הופך ברזל לקליקים טהורים.', descEn: 'Turns base metals into pure clicks.',
+    emoji: '⚗️', baseCps: 65000, baseCost: 75000000000, costScale: 1.15,
   },
 ];
 
@@ -286,6 +324,74 @@ const UPGRADES = [
     unlockWhen: s => (s.buildings.bank || 0) >= 10,
     apply: s => { s.buildingMult.bank = (s.buildingMult.bank || 1) * 5; }
   },
+  // --- מקדש ---
+  {
+    id: 'temple_2',
+    nameHe: 'פולחן עמוק', nameEn: 'Deep Worship',
+    descHe: 'מקדשים פי 2.', descEn: 'Temples ×2.',
+    cost: 40000000,
+    unlockWhen: s => (s.buildings.temple || 0) >= 1,
+    apply: s => { s.buildingMult.temple = (s.buildingMult.temple || 1) * 2; }
+  },
+  {
+    id: 'temple_3',
+    nameHe: 'ברכת האלים', nameEn: 'Divine Blessing',
+    descHe: 'מקדשים פי 5.', descEn: 'Temples ×5.',
+    cost: 500000000,
+    unlockWhen: s => (s.buildings.temple || 0) >= 10,
+    apply: s => { s.buildingMult.temple = (s.buildingMult.temple || 1) * 5; }
+  },
+  // --- מגדל קוסמים ---
+  {
+    id: 'wizard_2',
+    nameHe: 'לחשים עוצמתיים', nameEn: 'Power Spells',
+    descHe: 'מגדלים פי 2.', descEn: 'Wizard towers ×2.',
+    cost: 700000000,
+    unlockWhen: s => (s.buildings.wizard || 0) >= 1,
+    apply: s => { s.buildingMult.wizard = (s.buildingMult.wizard || 1) * 2; }
+  },
+  {
+    id: 'wizard_3',
+    nameHe: 'קסם אינסופי', nameEn: 'Infinite Magic',
+    descHe: 'מגדלים פי 5.', descEn: 'Wizard towers ×5.',
+    cost: 8000000000,
+    unlockWhen: s => (s.buildings.wizard || 0) >= 10,
+    apply: s => { s.buildingMult.wizard = (s.buildingMult.wizard || 1) * 5; }
+  },
+  // --- משלוח ---
+  {
+    id: 'shipment_2',
+    nameHe: 'טיל מהיר', nameEn: 'Faster Rockets',
+    descHe: 'משלוחים פי 2.', descEn: 'Shipments ×2.',
+    cost: 10000000000,
+    unlockWhen: s => (s.buildings.shipment || 0) >= 1,
+    apply: s => { s.buildingMult.shipment = (s.buildingMult.shipment || 1) * 2; }
+  },
+  {
+    id: 'shipment_3',
+    nameHe: 'ניווט בין-גלקטי', nameEn: 'Intergalactic Nav',
+    descHe: 'משלוחים פי 5.', descEn: 'Shipments ×5.',
+    cost: 120000000000,
+    unlockWhen: s => (s.buildings.shipment || 0) >= 10,
+    apply: s => { s.buildingMult.shipment = (s.buildingMult.shipment || 1) * 5; }
+  },
+  // --- אלכימיה ---
+  {
+    id: 'alchemy_2',
+    nameHe: 'אבן החכמים', nameEn: "Philosopher's Stone",
+    descHe: 'מעבדות פי 2.', descEn: 'Alchemy labs ×2.',
+    cost: 150000000000,
+    unlockWhen: s => (s.buildings.alchemy || 0) >= 1,
+    apply: s => { s.buildingMult.alchemy = (s.buildingMult.alchemy || 1) * 2; }
+  },
+  {
+    id: 'alchemy_3',
+    nameHe: 'מטריקס מולקולרי', nameEn: 'Molecular Matrix',
+    descHe: 'מעבדות פי 5.', descEn: 'Alchemy labs ×5.',
+    cost: 1500000000000,
+    unlockWhen: s => (s.buildings.alchemy || 0) >= 10,
+    apply: s => { s.buildingMult.alchemy = (s.buildingMult.alchemy || 1) * 5; }
+  },
   // --- כללי ---
   {
     id: 'global_2x',
@@ -294,6 +400,22 @@ const UPGRADES = [
     cost: 1000000,
     unlockWhen: s => s.totalClicks >= 500000,
     apply: s => { s.globalMultiplier *= 2; }
+  },
+  {
+    id: 'global_5x',
+    nameHe: 'שכר עצום', nameEn: 'Massive Payout',
+    descHe: 'כל הייצור פי 5.', descEn: 'All production ×5.',
+    cost: 500000000,
+    unlockWhen: s => s.totalClicks >= 50000000,
+    apply: s => { s.globalMultiplier *= 5; }
+  },
+  {
+    id: 'click_10x',
+    nameHe: 'יד של ענק', nameEn: 'Giant Hand',
+    descHe: 'קליקים שווים פי 10.', descEn: 'Clicks worth ×10.',
+    cost: 100000000,
+    unlockWhen: s => s.totalClicks >= 10000000,
+    apply: s => { s.clickMultiplier *= 10; }
   },
 ];
 
@@ -312,6 +434,11 @@ const ACHIEVEMENTS = [
   { id: 'own_mine',      nameHe: 'מכרה ראשון',     nameEn: 'First Mine',     icon: '⛏️', check: s => (s.buildings.mine||0) >= 1 },
   { id: 'own_factory',   nameHe: 'מפעל ראשון',     nameEn: 'First Factory',  icon: '🏭', check: s => (s.buildings.factory||0) >= 1 },
   { id: 'own_bank',      nameHe: 'בנק ראשון',      nameEn: 'First Bank',     icon: '🏦', check: s => (s.buildings.bank||0) >= 1 },
+  { id: 'own_temple',   nameHe: 'מקדש ראשון',     nameEn: 'First Temple',   icon: '🛕', check: s => (s.buildings.temple||0) >= 1 },
+  { id: 'own_wizard',   nameHe: 'מגדל ראשון',     nameEn: 'First Tower',    icon: '🔮', check: s => (s.buildings.wizard||0) >= 1 },
+  { id: 'own_shipment', nameHe: 'משלוח ראשון',    nameEn: 'First Shipment', icon: '🚀', check: s => (s.buildings.shipment||0) >= 1 },
+  { id: 'own_alchemy',  nameHe: 'מעבדה ראשונה',   nameEn: 'First Lab',      icon: '⚗️', check: s => (s.buildings.alchemy||0) >= 1 },
+  { id: 'golden_5',     nameHe: '5 עוגיות זהב',   nameEn: '5 Golden Cookies', icon: '🍪', check: s => s.goldenClicks >= 5 },
   { id: 'buildings_10',  nameHe: '10 בניינים',     nameEn: '10 Buildings',   icon: '🏗️', check: s => totalBuildings(s) >= 10 },
   { id: 'buildings_50',  nameHe: '50 בניינים',     nameEn: '50 Buildings',   icon: '🏙️', check: s => totalBuildings(s) >= 50 },
   { id: 'upgrades_5',    nameHe: '5 שדרוגים',      nameEn: '5 Upgrades',     icon: '⬆️', check: s => countUpgrades(s) >= 5 },
@@ -344,8 +471,10 @@ let state = {
   achievements:     {},
   totalClicks:      0,
   manualClicks:     0,
-  goldenClicks:     0,
-  prestigeCount:    0,
+  goldenClicks:          0,
+  clickFrenzyEndTime:    0,
+  frenzyEndTime:         0,
+  prestigeCount:         0,
   prestigeMultiplier: 1,
   startTime:        Date.now(),
   lastSaveTime:     null,
@@ -408,7 +537,8 @@ function recomputeCps() {
     const mult  = state.buildingMult[b.id] || 1;
     total += b.baseCps * owned * mult;
   }
-  state.cps = total * state.globalMultiplier * state.prestigeMultiplier;
+  const frenzyMult = (state.frenzyEndTime > 0 && Date.now() < state.frenzyEndTime) ? 7 : 1;
+  state.cps = total * state.globalMultiplier * state.prestigeMultiplier * frenzyMult;
 
   // Recompute click value
   state.clickValue = Math.max(1, Math.floor(
@@ -466,10 +596,18 @@ function tick() {
   const delta = (now - state.lastTickTime) / 1000;
   state.lastTickTime = now;
 
+  // Check frenzy expiration
+  if (state.frenzyEndTime > 0 && now > state.frenzyEndTime) {
+    state.frenzyEndTime = 0;
+    recomputeCps();
+  }
+
   if (state.cps > 0) {
     state.clicks += state.cps * delta;
     scheduleRender();
   }
+
+  renderActiveEffects();
 
   // Building tick flash — flash once per second per building
   for (const b of BUILDINGS) {
@@ -494,15 +632,8 @@ function tick() {
 // SECTION 11 — CLICK HANDLER
 // ============================================================
 function handleClick(e) {
-  const isGolden = document.getElementById('main-object').classList.contains('golden-mode');
-  let gained = state.clickValue;
-
-  if (isGolden) {
-    gained = Math.ceil(state.clickValue * CONFIG.goldenMultiplier);
-    state.goldenClicks++;
-    endGoldenMode();
-    showToast(t('goldenBonus').replace('{n}', fmt(gained)), '✨');
-  }
+  const clickFrenzyActive = state.clickFrenzyEndTime > 0 && Date.now() < state.clickFrenzyEndTime;
+  let gained = clickFrenzyActive ? Math.ceil(state.clickValue * 777) : state.clickValue;
 
   state.clicks      += gained;
   state.totalClicks += 1;
@@ -571,25 +702,74 @@ function spawnParticles(e, label) {
 }
 
 // ============================================================
-// SECTION 13 — GOLDEN MODE
+// SECTION 13 — GOLDEN COOKIE
 // ============================================================
-let goldenTimer = null;
+let goldenCookieDismissTimer = null;
 
-function scheduleGolden() {
+function scheduleGoldenCookie() {
   const delay = CONFIG.goldenMinMs + Math.random() * (CONFIG.goldenMaxMs - CONFIG.goldenMinMs);
-  goldenTimer = setTimeout(startGoldenMode, delay);
+  setTimeout(spawnGoldenCookie, delay);
 }
 
-function startGoldenMode() {
-  const obj = document.getElementById('main-object');
-  obj.classList.add('golden-mode');
-  showToast(t('goldenAlert'), '✨');
-  setTimeout(endGoldenMode, CONFIG.goldenDurationMs);
+function spawnGoldenCookie() {
+  const el = document.getElementById('golden-cookie');
+  if (!el) return;
+
+  const pad = 80;
+  const x = pad + Math.random() * (window.innerWidth  - pad * 2);
+  const y = pad + Math.random() * (window.innerHeight - pad * 2);
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+
+  if (ASSETS.images.goldenCookie) {
+    el.style.backgroundImage = `url(${ASSETS.images.goldenCookie})`;
+    el.style.backgroundSize  = 'cover';
+    el.textContent = '';
+  } else {
+    el.style.backgroundImage = '';
+    el.textContent = '🍪';
+  }
+
+  el.classList.add('visible');
+  playSound('golden');
+  showToast(t('goldenAppear'), '✨');
+
+  goldenCookieDismissTimer = setTimeout(dismissGoldenCookie, CONFIG.goldenDurationMs);
 }
 
-function endGoldenMode() {
-  document.getElementById('main-object').classList.remove('golden-mode');
-  scheduleGolden();
+function dismissGoldenCookie() {
+  clearTimeout(goldenCookieDismissTimer);
+  const el = document.getElementById('golden-cookie');
+  if (el) el.classList.remove('visible');
+  scheduleGoldenCookie();
+}
+
+function claimGoldenCookie() {
+  clearTimeout(goldenCookieDismissTimer);
+  state.goldenClicks++;
+
+  const roll = Math.random();
+  if (roll < 0.34) {
+    // Click Frenzy
+    state.clickFrenzyEndTime = Date.now() + 13000;
+    showToast(t('goldenClickFrenzy'), '🖱️');
+  } else if (roll < 0.67) {
+    // Lucky — 13 minutes of current CPS
+    const earned = state.cps * 13 * 60;
+    state.clicks += Math.max(earned, state.clickValue * 100);
+    showToast(t('goldenLucky').replace('{n}', fmt(earned || state.clickValue * 100)), '🍀');
+  } else {
+    // Frenzy — ×7 all production for 77 seconds
+    state.frenzyEndTime = Date.now() + 77000;
+    recomputeCps();
+    showToast(t('goldenFrenzy'), '⚡');
+  }
+
+  playSound('milestone');
+  const el = document.getElementById('golden-cookie');
+  if (el) el.classList.remove('visible');
+  scheduleGoldenCookie();
+  checkAchievements();
 }
 
 // ============================================================
@@ -640,6 +820,23 @@ function renderAll() {
   renderBuildings();
   renderUpgrades();
   renderPrestige();
+  renderActiveEffects();
+}
+
+function renderActiveEffects() {
+  const el = document.getElementById('active-effects');
+  if (!el) return;
+  const now = Date.now();
+  const parts = [];
+  if (state.frenzyEndTime > 0 && now < state.frenzyEndTime) {
+    const sec = Math.ceil((state.frenzyEndTime - now) / 1000);
+    parts.push(t('goldenFrenzyActive') + ' ' + sec + 's');
+  }
+  if (state.clickFrenzyEndTime > 0 && now < state.clickFrenzyEndTime) {
+    const sec = Math.ceil((state.clickFrenzyEndTime - now) / 1000);
+    parts.push(t('goldenClickFrenzyActive') + ' ' + sec + 's');
+  }
+  el.textContent = parts.join('  |  ');
 }
 
 let lastRenderedClicks = -1;
@@ -792,7 +989,7 @@ function applyAssets() {
     document.getElementById('main-object').classList.add('has-image');
   }
   // Audio sources
-  ['click', 'purchase', 'milestone', 'ambient'].forEach(name => {
+  ['click', 'purchase', 'milestone', 'ambient', 'golden'].forEach(name => {
     const src = ASSETS.audio[name];
     const el  = document.getElementById('audio-' + name);
     if (src && el) el.src = src;
@@ -886,6 +1083,9 @@ function wireEventListeners() {
   });
   document.getElementById('btn-lang').addEventListener('click', toggleLanguage);
 
+  const goldenEl = document.getElementById('golden-cookie');
+  if (goldenEl) goldenEl.addEventListener('click', claimGoldenCookie);
+
   // Spacebar = click
   document.addEventListener('keydown', e => {
     if (e.code === 'Space' && e.target === document.body) {
@@ -948,8 +1148,8 @@ function init() {
   // News ticker
   nextNews();
   setInterval(nextNews, 32000);
-  // Golden mode
-  scheduleGolden();
+  // Golden cookie
+  scheduleGoldenCookie();
 }
 
 document.addEventListener('DOMContentLoaded', init);

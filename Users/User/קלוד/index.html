@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>קליקר</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- רצועת חדשות -->
+<div id="news-bar">
+  <span id="news-label">חדשות:</span>
+  <div id="news-ticker-wrap">
+    <span id="news-ticker"></span>
+  </div>
+</div>
+
+<!-- טוסט הישגים -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- וידאו רקע (אופציונלי) -->
+<video id="bg-video" autoplay muted loop playsinline></video>
+
+<!-- אפליקציה ראשית -->
+<div id="app">
+
+  <!-- עמודה שמאלית — שדרוגים -->
+  <aside id="sidebar-upgrades">
+    <h2 class="panel-title" data-he="שדרוגים" data-en="Upgrades">שדרוגים</h2>
+    <div id="upgrades-panel"></div>
+  </aside>
+
+  <!-- עמודה מרכזית -->
+  <main id="main-stage">
+    <div id="stats-bar">
+      <span id="click-counter">0</span>
+      <span id="stats-label" data-he="קליקים" data-en="clicks">קליקים</span>
+    </div>
+    <div id="cps-display">
+      <span data-he="לשנייה: " data-en="Per second: ">לשנייה: </span><span id="cps-value">0</span>
+    </div>
+
+    <div id="click-area">
+      <div id="pulse-ring"></div>
+      <div id="main-object">
+        <img id="main-object-img" src="" alt="" style="display:none">
+      </div>
+      <div id="particle-layer"></div>
+    </div>
+
+    <div id="click-hint" data-he="לחץ!" data-en="Click!">לחץ!</div>
+
+    <!-- סטטיסטיקות -->
+    <details id="stats-panel">
+      <summary data-he="סטטיסטיקות" data-en="Stats">סטטיסטיקות</summary>
+      <div id="stats-content">
+        <div><span data-he="קליקים ידניים: " data-en="Manual clicks: ">קליקים ידניים: </span><span id="stat-manual">0</span></div>
+        <div><span data-he="זמן משחק: " data-en="Play time: ">זמן משחק: </span><span id="stat-time">0:00</span></div>
+        <div><span data-he="שדרוגים שנקנו: " data-en="Upgrades bought: ">שדרוגים שנקנו: </span><span id="stat-upgrades">0</span></div>
+        <div><span data-he="הישגים: " data-en="Achievements: ">הישגים: </span><span id="stat-achievements">0</span></div>
+      </div>
+    </details>
+  </main>
+
+  <!-- עמודה ימנית — בניינים + שמירה -->
+  <aside id="sidebar-buildings">
+    <h2 class="panel-title" data-he="בניינים" data-en="Buildings">בניינים</h2>
+    <div id="buildings-panel"></div>
+
+    <div id="save-controls">
+      <button id="btn-save" data-he="שמור" data-en="Save">שמור</button>
+      <button id="btn-export" data-he="ייצוא" data-en="Export">ייצוא</button>
+      <button id="btn-import" data-he="ייבוא" data-en="Import">ייבוא</button>
+      <button id="btn-reset" data-he="איפוס" data-en="Reset">איפוס</button>
+      <button id="btn-lang">EN</button>
+      <div id="save-info"></div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- אודיו -->
+<audio id="audio-click"     preload="auto"></audio>
+<audio id="audio-purchase"  preload="auto"></audio>
+<audio id="audio-milestone" preload="auto"></audio>
+<audio id="audio-ambient"   preload="auto" loop></audio>
+
+<script src="game.js"></script>
+</body>
+</html>

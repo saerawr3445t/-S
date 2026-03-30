@@ -401,29 +401,6 @@ aside {
   position: relative;
 }
 
-/* ── Desktop: float main-stage as a full-viewport transparent overlay
-   so the click button sits exactly on the tunnel's vanishing-point center.
-   Sidebars need explicit grid-column because #main-stage leaves the flow. ── */
-@media (min-width: 769px) {
-  #sidebar-upgrades  { grid-column: 1; }
-  #sidebar-buildings { grid-column: 3; }
-
-  #main-stage {
-    position: fixed;
-    top: 28px;   /* below the news bar */
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 5;
-    background: none;
-    border: none;
-    overflow: visible;
-    pointer-events: none;  /* clicks pass through to canvas / sidebars */
-  }
-
-  /* Re-enable interaction on actual UI elements */
-  #main-stage > * { pointer-events: auto; }
-}
 
 /* Stats bar */
 #stats-bar {
@@ -1164,6 +1141,81 @@ aside {
   min-height: 1.1em;
   text-align: center;
   letter-spacing: 0.04em;
+}
+
+/* ============================================================
+   DESKTOP — click button pinned to exact tunnel vanishing point
+   Placed after all base rules so cascade order wins correctly.
+   Sidebars get explicit grid-column so they stay when #main-stage
+   leaves the grid flow.
+   ============================================================ */
+@media (min-width: 769px) {
+  #sidebar-upgrades  { grid-column: 1; }
+  #sidebar-buildings { grid-column: 3; }
+
+  /* Main stage: full-viewport transparent overlay */
+  #main-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    background: none;
+    border: none;
+    overflow: visible;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+  }
+
+  /* click button — exact viewport center */
+  #click-area {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: auto;
+  }
+
+  /* elements above the button */
+  #stats-bar {
+    position: fixed;
+    top: calc(50% - 192px);
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+  #cps-display {
+    position: fixed;
+    top: calc(50% - 155px);
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+  #active-effects {
+    position: fixed;
+    top: calc(50% - 128px);
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+
+  /* element below the button */
+  #click-hint {
+    position: fixed;
+    top: calc(50% + 128px);
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: auto;
+  }
 }
 
 /* ============================================================

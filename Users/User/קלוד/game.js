@@ -479,6 +479,10 @@ let state = {
   startTime:        Date.now(),
   lastSaveTime:     null,
   lastTickTime:     Date.now(),
+  // Quest system
+  quests:           [],
+  questMultEndTime: 0,
+  questMult:        1,
 };
 
 // ============================================================
@@ -535,16 +539,64 @@ function recomputeCps() {
   for (const b of BUILDINGS) {
     const owned = state.buildings[b.id] || 0;
     const mult  = state.buildingMult[b.id] || 1;
-    total += b.baseCps * owned * mult;
+    total += b.baseCps * owned * mult * getSynergy(b.id);
   }
-  const frenzyMult = (state.frenzyEndTime > 0 && Date.now() < state.frenzyEndTime) ? 7 : 1;
-  state.cps = total * state.globalMultiplier * state.prestigeMultiplier * frenzyMult;
+  const now        = Date.now();
+  const frenzyMult = (state.frenzyEndTime     > 0 && now < state.frenzyEndTime)     ? 7 : 1;
+  const questMult  = (state.questMultEndTime  > 0 && now < state.questMultEndTime)  ? (state.questMult || 1) : 1;
+  state.cps = total * state.globalMultiplier * state.prestigeMultiplier * frenzyMult * questMult;
 
   // Recompute click value
   state.clickValue = Math.max(1, Math.floor(
     CONFIG.baseClickValue * state.clickMultiplier * state.prestigeMultiplier
   ));
 }
+
+// ============================================================
+// SECTION 29 — BUILDING SYNERGIES
+// ============================================================
+function getSynergy(id) {
+  const b   = state.buildings;
+  const tot = totalBuildings(state);
+  switch (id) {
+    case 'cursor':   return 1 + 0.01  * Math.floor((b.farm     || 0) / 5);   // +1% per 5 farms
+    case 'farm':     return 1 + 0.01  * Math.floor((b.cursor   || 0) / 5);   // +1% per 5 cursors
+    case 'mine':     return 1 + 0.02  * (b.temple   || 0);                   // +2% per temple
+    case 'factory':  return 1 + 0.01  * Math.floor((b.mine     || 0) / 10);  // +1% per 10 mines
+    case 'bank':     return 1 + 0.005 * tot;                                  // +0.5% per building
+    case 'temple':   return 1 + 0.03  * (b.wizard   || 0);                   // +3% per wizard tower
+    case 'wizard':   return 1 + 0.05  * (b.shipment || 0);                   // +5% per shipment
+    case 'shipment': return 1 + 0.02  * (b.alchemy  || 0);                   // +2% per lab
+    case 'alchemy':  return 1 + 0.01  * Math.floor(tot / 10);                // +1% per 10 buildings
+    default:         return 1;
+  }
+}
+
+// Human-readable synergy hint for each building (shown in tooltip)
+const SYNERGY_HINT = {
+  he: {
+    cursor:   'פארמות מגבירות סמנים (+1% / 5 פארמות)',
+    farm:     'סמנים מגבירים פארמות (+1% / 5 סמנים)',
+    mine:     'מקדשים מגבירים מכרות (+2% / מקדש)',
+    factory:  'מכרות מגבירים מפעלים (+1% / 10 מכרות)',
+    bank:     'כל בניין מגביר בנקים (+0.5% / בניין)',
+    temple:   'מגדלי קוסמים מגבירים מקדשים (+3% / מגדל)',
+    wizard:   'משלוחים מגבירים מגדלי קוסמים (+5% / משלוח)',
+    shipment: 'מעבדות מגבירות משלוחים (+2% / מעבדה)',
+    alchemy:  'כל 10 בניינים מגבירים מעבדות (+1% / 10)',
+  },
+  en: {
+    cursor:   'Farms boost cursors (+1% per 5 farms)',
+    farm:     'Cursors boost farms (+1% per 5 cursors)',
+    mine:     'Temples boost mines (+2% per temple)',
+    factory:  'Mines boost factories (+1% per 10 mines)',
+    bank:     'All buildings boost banks (+0.5% each)',
+    temple:   'Wizard towers boost temples (+3% each)',
+    wizard:   'Shipments boost wizard towers (+5% each)',
+    shipment: 'Alchemy labs boost shipments (+2% each)',
+    alchemy:  'Every 10 buildings boost labs (+1%)',
+  }
+};
 
 function buyBuilding(id) {
   const b = BUILDINGS.find(x => x.id === id);
@@ -556,6 +608,21 @@ function buyBuilding(id) {
   recomputeCps();
   playSound('purchase');
   fireTunnelEvent(id);
+  // Quest tracking: buy_n and own_n_of
+  if (state.quests) {
+    state.quests.forEach(q => {
+      if (!q || q.completed) return;
+      if (q.type === 'buy_n') {
+        q.progress = Math.min(q.progress + 1, q.target);
+        if (q.progress >= q.target) q.completed = true;
+      }
+      if (q.type === 'own_n_of' && q.bId === id) {
+        q.progress = state.buildings[id];
+        if (q.progress >= q.target) q.completed = true;
+      }
+    });
+    renderQuests();
+  }
   scheduleRender();
   checkAchievements();
 }
@@ -600,6 +667,12 @@ function tick() {
   // Check frenzy expiration
   if (state.frenzyEndTime > 0 && now > state.frenzyEndTime) {
     state.frenzyEndTime = 0;
+    recomputeCps();
+  }
+  // Check quest mult expiration
+  if (state.questMultEndTime > 0 && now > state.questMultEndTime) {
+    state.questMultEndTime = 0;
+    state.questMult = 1;
     recomputeCps();
   }
 
@@ -691,6 +764,15 @@ function handleClick(e) {
   state.clicks       += gained;
   state.totalClicks  += 1;
   state.manualClicks += 1;
+
+  // Quest tracking: click_n
+  if (state.quests) {
+    state.quests.forEach(q => {
+      if (!q || q.completed || q.type !== 'click_n') return;
+      q.progress = Math.min(q.progress + 1, q.target);
+      if (q.progress >= q.target) q.completed = true;
+    });
+  }
 
   if (isCrit) {
     const obj = document.getElementById('main-object');
@@ -933,6 +1015,15 @@ function renderStats() {
 }
 
 function renderBuildings() {
+  // Compute best-buy: highest CPS-gain per cost right now
+  let bestId = null, bestRatio = -1;
+  for (const b of BUILDINGS) {
+    const cost    = getCost(b);
+    const cpsGain = b.baseCps * (state.buildingMult[b.id] || 1) * getSynergy(b.id);
+    const ratio   = cpsGain / cost;
+    if (ratio > bestRatio) { bestRatio = ratio; bestId = b.id; }
+  }
+
   for (const b of BUILDINGS) {
     const row = document.querySelector(`[data-building-id="${b.id}"]`);
     if (!row) continue;
@@ -942,6 +1033,20 @@ function renderBuildings() {
     row.querySelector('.b-cost').textContent  = t('cost') + fmt(cost);
     row.classList.toggle('affordable-no', state.clicks < cost);
     row.classList.toggle('owned', owned > 0);
+    row.classList.toggle('best-buy', b.id === bestId);
+
+    // Synergy display
+    const synEl = row.querySelector('.b-syn');
+    if (synEl) {
+      const syn = getSynergy(b.id);
+      if (syn > 1.001) {
+        synEl.textContent = `⚡ +${Math.round((syn - 1) * 100)}%`;
+        synEl.style.opacity = '1';
+      } else {
+        synEl.textContent = '';
+        synEl.style.opacity = '0';
+      }
+    }
   }
 }
 
@@ -1011,11 +1116,14 @@ function buildBuildingRows() {
       ? `<img src="${iconSrc}" alt="">`
       : b.emoji;
 
+    const hint = (SYNERGY_HINT[CONFIG.language] || SYNERGY_HINT.he)[b.id] || '';
+    row.title = hint;
     row.innerHTML = `
       <div class="b-icon">${iconContent}</div>
       <div class="b-name">${CONFIG.language === 'he' ? b.nameHe : b.nameEn}</div>
       <div class="b-count">0</div>
       <div class="b-cost"></div>
+      <div class="b-syn"></div>
     `;
     // Work area (mini production scene, shown when owned)
     const work = document.createElement('div');
@@ -1380,6 +1488,242 @@ function fireTunnelEvent(buildingId) {
 }
 
 // ============================================================
+// SECTION 30 — QUEST SYSTEM
+// ============================================================
+const QUEST_DURATION_S = 180; // 3 minutes per quest
+
+// Quest generators — each returns a fresh quest object
+const QUEST_GEN = [
+  // Click N times manually
+  () => {
+    const t = [30, 60, 120, 250, 500][Math.floor(Math.random() * 5)];
+    return {
+      id: Math.random().toString(36).slice(2),
+      type: 'click_n', target: t, progress: 0,
+      textHe: `לחץ ${t} פעמים`, textEn: `Click ${t} times`,
+      rewardType: 'clicks',
+      rewardN: Math.max(t * 50, 500),
+    };
+  },
+  // Reach a CPS goal
+  () => {
+    const base = Math.max(state.cps || 1, 1);
+    const target = Math.ceil(base * (1.5 + Math.random() * 2));
+    return {
+      id: Math.random().toString(36).slice(2),
+      type: 'reach_cps', target, progress: state.cps,
+      textHe: `הגע ל-${fmt(target)} לשנ׳`, textEn: `Reach ${fmt(target)} CPS`,
+      rewardType: 'mult_temp',
+      rewardMult: 2, rewardDurS: 30,
+    };
+  },
+  // Buy N buildings total
+  () => {
+    const n = 2 + Math.floor(Math.random() * 4);
+    return {
+      id: Math.random().toString(36).slice(2),
+      type: 'buy_n', target: n, progress: 0,
+      textHe: `קנה ${n} בניינים`, textEn: `Buy ${n} buildings`,
+      rewardType: 'golden_now',
+    };
+  },
+  // Own N of a specific building
+  () => {
+    const pool = BUILDINGS.slice(0, Math.min(5, BUILDINGS.length));
+    const b    = pool[Math.floor(Math.random() * pool.length)];
+    const cur  = state.buildings[b.id] || 0;
+    const need = cur + 3 + Math.floor(Math.random() * 5);
+    return {
+      id: Math.random().toString(36).slice(2),
+      type: 'own_n_of', target: need, bId: b.id, progress: cur,
+      textHe: `קנה ${need} ${b.nameHe}`,
+      textEn: `Own ${need} ${b.nameEn}`,
+      rewardType: 'cps_boost',
+      rewardMult: 1.5, rewardDurS: 60,
+    };
+  },
+];
+
+function generateQuest() {
+  const gen = QUEST_GEN[Math.floor(Math.random() * QUEST_GEN.length)];
+  const q   = gen();
+  q.expiresAt = Date.now() + QUEST_DURATION_S * 1000;
+  return q;
+}
+
+function initQuests() {
+  if (!state.quests || state.quests.length === 0) {
+    state.quests = [generateQuest(), generateQuest(), generateQuest()];
+  } else {
+    // Refresh stale/expired quests from a saved state
+    state.quests = state.quests.map(q =>
+      (q && q.expiresAt > Date.now()) ? q : generateQuest()
+    );
+    // Ensure exactly 3 slots
+    while (state.quests.length < 3) state.quests.push(generateQuest());
+  }
+  buildQuestPanel();
+}
+
+// Called every second from setInterval
+function tickQuests() {
+  if (!state.quests) return;
+  let changed = false;
+  const now = Date.now();
+
+  state.quests = state.quests.map(q => {
+    if (!q) return generateQuest();
+
+    // Passive progress checks
+    if (q.type === 'reach_cps' && !q.completed) {
+      q.progress = state.cps;
+      if (q.progress >= q.target) { q.completed = true; changed = true; }
+    }
+    if (q.type === 'own_n_of' && !q.completed) {
+      q.progress = state.buildings[q.bId] || 0;
+      if (q.progress >= q.target) { q.completed = true; changed = true; }
+    }
+
+    // Expire uncompleted quests
+    if (!q.completed && now > q.expiresAt) {
+      changed = true;
+      return generateQuest();
+    }
+    return q;
+  });
+
+  if (changed) renderQuests();
+  else _questRenderTick();   // just update the countdown timers
+}
+
+// Lightweight tick just to refresh countdowns
+function _questRenderTick() {
+  const panel = document.getElementById('quest-panel');
+  if (!panel || !state.quests) return;
+  state.quests.forEach((q, i) => {
+    if (!q) return;
+    const card = panel.children[i + 1]; // +1 for header
+    if (!card) return;
+    const timeEl = card.querySelector('.quest-time');
+    if (!timeEl || q.completed) return;
+    const left = Math.max(0, Math.ceil((q.expiresAt - Date.now()) / 1000));
+    const m = Math.floor(left / 60), s = left % 60;
+    timeEl.textContent = `${m}:${pad(s)}`;
+    timeEl.classList.toggle('quest-urgent', left < 30);
+  });
+}
+
+function claimQuest(idx) {
+  const q = state.quests[idx];
+  if (!q || !q.completed || q.claimed) return;
+  q.claimed = true;
+
+  switch (q.rewardType) {
+    case 'clicks': {
+      state.clicks += q.rewardN;
+      showToast(
+        CONFIG.language === 'he' ? `🎁 משימה! +${fmt(q.rewardN)}` : `🎁 Quest! +${fmt(q.rewardN)}`,
+        '✅'
+      );
+      break;
+    }
+    case 'mult_temp':
+    case 'cps_boost': {
+      state.questMultEndTime = Date.now() + q.rewardDurS * 1000;
+      state.questMult = q.rewardMult;
+      recomputeCps();
+      showToast(
+        CONFIG.language === 'he'
+          ? `⚡ ×${q.rewardMult} ייצור ל-${q.rewardDurS}שנ׳!`
+          : `⚡ ×${q.rewardMult} production for ${q.rewardDurS}s!`,
+        '🚀'
+      );
+      break;
+    }
+    case 'golden_now': {
+      clearTimeout(goldenCookieDismissTimer);
+      spawnGoldenCookie();
+      showToast(
+        CONFIG.language === 'he' ? '🍪 עוגיית זהב מיידית!' : '🍪 Instant golden cookie!',
+        '✨'
+      );
+      break;
+    }
+  }
+
+  playSound('milestone');
+  scheduleRender();
+  checkAchievements();
+
+  // Swap this slot for a fresh quest after 2 s
+  setTimeout(() => {
+    state.quests[idx] = generateQuest();
+    renderQuests();
+  }, 2000);
+}
+
+function getRewardLabel(q) {
+  const lang = CONFIG.language;
+  switch (q.rewardType) {
+    case 'clicks':     return `+${fmt(q.rewardN)}`;
+    case 'mult_temp':  return `×${q.rewardMult} / ${q.rewardDurS}s`;
+    case 'cps_boost':  return `×${q.rewardMult} / ${q.rewardDurS}s`;
+    case 'golden_now': return lang === 'he' ? '🍪 עוגייה' : '🍪 Cookie';
+    default:           return '?';
+  }
+}
+
+function renderQuests() {
+  const panel = document.getElementById('quest-panel');
+  if (!panel || !state.quests) return;
+  panel.innerHTML = '';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'quest-header';
+  hdr.textContent = CONFIG.language === 'he' ? '📋 משימות' : '📋 Quests';
+  panel.appendChild(hdr);
+
+  state.quests.forEach((q, i) => {
+    if (!q) return;
+    const card = document.createElement('div');
+    card.className = 'quest-card' +
+      (q.completed && !q.claimed ? ' quest-claimable' : '') +
+      (q.claimed               ? ' quest-claimed'   : '');
+
+    const pct      = Math.min(Math.round((q.progress / q.target) * 100), 100);
+    const left     = Math.max(0, Math.ceil((q.expiresAt - Date.now()) / 1000));
+    const m        = Math.floor(left / 60), s = left % 60;
+    const timeStr  = `${m}:${pad(s)}`;
+    const text     = CONFIG.language === 'he' ? q.textHe : q.textEn;
+    const reward   = getRewardLabel(q);
+    const doneText = CONFIG.language === 'he' ? '✅ לחץ לקבלה' : '✅ Click to claim';
+    const claimedText = CONFIG.language === 'he' ? '✔ נלקח' : '✔ Claimed';
+
+    card.innerHTML = `
+      <div class="quest-text">${text}</div>
+      <div class="quest-bar"><div class="quest-fill" style="width:${pct}%"></div></div>
+      <div class="quest-meta">
+        <span class="quest-time${left < 30 && !q.completed ? ' quest-urgent' : ''}">
+          ${q.claimed ? claimedText : q.completed ? doneText : timeStr}
+        </span>
+        <span class="quest-reward">🎁 ${reward}</span>
+      </div>
+    `;
+
+    if (q.completed && !q.claimed) {
+      card.addEventListener('click', (e) => { e.stopPropagation(); claimQuest(i); });
+      card.style.cursor = 'pointer';
+    }
+
+    panel.appendChild(card);
+  });
+}
+
+function buildQuestPanel() {
+  renderQuests();
+}
+
+// ============================================================
 // SECTION 27 — SPIRAL TUNNEL BACKGROUND
 // ============================================================
 function initTunnelBackground() {
@@ -1520,6 +1864,9 @@ function init() {
   setInterval(nextNews, 32000);
   // Golden cookie
   scheduleGoldenCookie();
+  // Quests
+  initQuests();
+  setInterval(tickQuests, 1000);
   // Mobile nav
   initMobileNav();
 }

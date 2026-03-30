@@ -635,15 +635,74 @@ function tick() {
 // ============================================================
 // SECTION 11 — CLICK HANDLER
 // ============================================================
-function handleClick(e) {
-  const clickFrenzyActive = state.clickFrenzyEndTime > 0 && Date.now() < state.clickFrenzyEndTime;
-  let gained = clickFrenzyActive ? Math.ceil(state.clickValue * 777) : state.clickValue;
+// ── Combo + Critical hit state ──────────────────────────────
+let _combo = 0;
+let _comboTimer = null;
+const MILESTONE_THRESHOLDS = [100, 1e3, 1e4, 1e5, 1e6, 1e9, 1e12];
+let _milestoneIdx = 0;
 
-  state.clicks      += gained;
-  state.totalClicks += 1;
+function clickCombo() {
+  clearTimeout(_comboTimer);
+  _combo = Math.min(_combo + 1, 10);
+  _comboTimer = setTimeout(() => { _combo = 0; renderComboDisplay(); }, 1600);
+  renderComboDisplay();
+}
+
+function comboMult() {
+  if (_combo < 5)  return 1;
+  if (_combo < 8)  return 2;
+  if (_combo < 10) return 3;
+  return 4;
+}
+
+function renderComboDisplay() {
+  const el = document.getElementById('combo-counter');
+  if (!el) return;
+  el.className = '';
+  if (_combo < 5) { el.textContent = ''; return; }
+  const m = comboMult();
+  if (m === 4) { el.className = 'combo-x4'; el.textContent = `⚡ ×4 MEGA COMBO!`; }
+  else if (m === 3) { el.className = 'combo-x3'; el.textContent = `🔥 ×3 COMBO (${_combo})`; }
+  else              { el.className = 'combo-x2'; el.textContent = `×2 combo (${_combo})`; }
+}
+
+function checkMilestones() {
+  while (_milestoneIdx < MILESTONE_THRESHOLDS.length &&
+         state.totalClicks >= MILESTONE_THRESHOLDS[_milestoneIdx]) {
+    const n = MILESTONE_THRESHOLDS[_milestoneIdx];
+    const flash = document.getElementById('milestone-flash');
+    if (flash) { flash.classList.remove('boom'); void flash.offsetWidth; flash.classList.add('boom'); }
+    showToast(
+      CONFIG.language === 'he' ? `🏆 ${fmt(n)} קליקים!` : `🏆 ${fmt(n)} clicks!`,
+      '🎊'
+    );
+    fireTunnelEvent('temple');
+    _milestoneIdx++;
+  }
+}
+
+function handleClick(e) {
+  const frenzyActive = state.clickFrenzyEndTime > 0 && Date.now() < state.clickFrenzyEndTime;
+  const isCrit       = !frenzyActive && Math.random() < 0.07;
+  clickCombo();
+  const mult   = frenzyActive ? 777 : (comboMult() * (isCrit ? 5 : 1));
+  const gained = Math.ceil(state.clickValue * mult);
+
+  state.clicks       += gained;
+  state.totalClicks  += 1;
   state.manualClicks += 1;
 
-  spawnParticles(e, '+' + fmt(gained));
+  if (isCrit) {
+    const obj = document.getElementById('main-object');
+    obj.classList.remove('crit-anim');
+    void obj.offsetWidth;
+    obj.classList.add('crit-anim');
+    spawnParticles(e, '⚡' + fmt(gained));
+  } else {
+    spawnParticles(e, '+' + fmt(gained));
+  }
+
+  checkMilestones();
   triggerClickAnim();
   playSound('click');
   scheduleRender();
@@ -651,6 +710,11 @@ function handleClick(e) {
 }
 
 function triggerClickAnim() {
+  const obj = document.getElementById('main-object');
+  obj.classList.remove('click-squish');
+  void obj.offsetWidth;
+  obj.classList.add('click-squish');
+
   const ring = document.getElementById('pulse-ring');
   ring.classList.remove('active');
   void ring.offsetWidth;

@@ -401,6 +401,30 @@ aside {
   position: relative;
 }
 
+/* ── Desktop: float main-stage as a full-viewport transparent overlay
+   so the click button sits exactly on the tunnel's vanishing-point center.
+   Sidebars need explicit grid-column because #main-stage leaves the flow. ── */
+@media (min-width: 769px) {
+  #sidebar-upgrades  { grid-column: 1; }
+  #sidebar-buildings { grid-column: 3; }
+
+  #main-stage {
+    position: fixed;
+    top: 28px;   /* below the news bar */
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5;
+    background: none;
+    border: none;
+    overflow: visible;
+    pointer-events: none;  /* clicks pass through to canvas / sidebars */
+  }
+
+  /* Re-enable interaction on actual UI elements */
+  #main-stage > * { pointer-events: auto; }
+}
+
 /* Stats bar */
 #stats-bar {
   text-align: center;

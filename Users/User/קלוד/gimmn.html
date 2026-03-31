@@ -503,7 +503,14 @@
         <div class="expression-emoji" id="targetEmoji">😊</div>
         <div class="expression-name" id="targetName">חיוך</div>
 
-        <div class="detect-display">
+        <div class="detect-display" id="calibratingDisplay" style="display:none">
+          <div class="detect-label">🤖 AI לומד את הפנים שלך...</div>
+          <div style="margin-top:8px;background:rgba(255,255,255,0.08);border-radius:8px;height:10px;overflow:hidden">
+            <div id="calibProgressBar" style="height:10px;background:linear-gradient(90deg,#f7971e,#ffd200);border-radius:8px;width:0%;transition:width 0.3s ease"></div>
+          </div>
+          <div style="font-size:0.8rem;color:#7dd3fc;margin-top:6px">הסתכל ישר למצלמה עם פנים נייטרליות</div>
+        </div>
+        <div class="detect-display" id="detectingDisplay">
           <div class="detect-label">🎭 הבעה שאני רואה</div>
           <div class="detect-value" id="detectedExpression" style="font-size:2.5rem;">-</div>
           <div class="detect-icons" id="expressionIcons"></div>
@@ -724,60 +731,61 @@ const FingerGame = {
     this.resetCountdown();
   },
 
-  /* ── Advanced finger counting ──
-     Multi-signal approach: combines vector projection (rotation-invariant),
-     curl detection (PIP angle), and tip-to-palm distance.
-     Each signal votes; majority wins per finger → much more robust. */
+  /* ── Advanced finger counting — 4-signal voting + 3D depth ──
+     Each finger evaluated with 4 independent signals (3/4 majority):
+     1. Palm-direction vector projection (rotation-invariant 2D)
+     2. Tip-to-wrist distance vs PIP-to-wrist (works at any angle)
+     3. PIP joint angle (straight = extended)
+     4. DIP joint angle (second knuckle also straight)
+     Thumb also uses z-axis (depth) to detect forward extension.
+     Buffer increased to 11 frames for rock-solid stability. */
   countFingers(multiHandLandmarks) {
     if (!multiHandLandmarks || multiHandLandmarks.length === 0) {
       this._smoothBuf.push(0);
-      if (this._smoothBuf.length > 9) this._smoothBuf.shift();
+      if (this._smoothBuf.length > 11) this._smoothBuf.shift();
       return modeOf(this._smoothBuf);
     }
     let total = 0;
     for (const pts of multiHandLandmarks) {
-      // Palm reference vectors
       const palmdx = pts[9].x - pts[0].x;
       const palmdy = pts[9].y - pts[0].y;
       const palmLen = Math.hypot(palmdx, palmdy) || 1;
       const upX = palmdx / palmLen, upY = palmdy / palmLen;
       const palmW = Math.hypot(pts[5].x - pts[17].x, pts[5].y - pts[17].y) || 0.1;
-      // Palm center for distance checks
       const palmCx = (pts[0].x + pts[5].x + pts[17].x) / 3;
       const palmCy = (pts[0].y + pts[5].y + pts[17].y) / 3;
 
-      // ── Thumb: 3 signals ──
-      // Signal 1: tip-to-MCP distance vs palm width
-      const thDist = Math.hypot(pts[4].x - pts[2].x, pts[4].y - pts[2].y);
-      const thSig1 = thDist > palmW * 0.5;
-      // Signal 2: tip further from palm center than IP joint
-      const thTipDist = Math.hypot(pts[4].x - palmCx, pts[4].y - palmCy);
-      const thIPDist  = Math.hypot(pts[3].x - palmCx, pts[3].y - palmCy);
-      const thSig2 = thTipDist > thIPDist * 1.1;
-      // Signal 3: angle at IP joint (straight = extended)
-      const thAngle = angleBetween(pts[2], pts[3], pts[4]);
-      const thSig3 = thAngle > 140;
-      if ((thSig1 ? 1 : 0) + (thSig2 ? 1 : 0) + (thSig3 ? 1 : 0) >= 2) total++;
+      // ── Thumb: 4 signals, need 2/4 (thumb has different geometry) ──
+      const thDist  = Math.hypot(pts[4].x - pts[2].x, pts[4].y - pts[2].y);
+      const thSig1  = thDist > palmW * 0.48;                               // tip-MCP distance
+      const thTipD  = Math.hypot(pts[4].x - palmCx, pts[4].y - palmCy);
+      const thIPD   = Math.hypot(pts[3].x - palmCx, pts[3].y - palmCy);
+      const thSig2  = thTipD > thIPD * 1.08;                               // tip further from palm center
+      const thSig3  = angleBetween(pts[2], pts[3], pts[4]) > 135;          // IP joint angle
+      const thSig4  = (pts[4].z - pts[2].z) < -0.015;                      // tip in front of MCP (3D depth)
+      if ((thSig1?1:0)+(thSig2?1:0)+(thSig3?1:0)+(thSig4?1:0) >= 2) total++;
 
-      // ── Fingers 2-5: 3 signals each ──
-      const TIPS = [8,12,16,20], PIPS = [6,10,14,18], MCPS = [5,9,13,17], DIPS = [7,11,15,19];
+      // ── Fingers 2-5: 4 signals, need 3/4 ──
+      const TIPS=[8,12,16,20], PIPS=[6,10,14,18], MCPS=[5,9,13,17], DIPS=[7,11,15,19];
       for (let i = 0; i < 4; i++) {
-        // Signal 1: vector projection onto palm direction
+        // S1: vector projection along palm direction
         const dx = pts[TIPS[i]].x - pts[MCPS[i]].x;
         const dy = pts[TIPS[i]].y - pts[MCPS[i]].y;
-        const sig1 = (dx * upX + dy * upY) > palmLen * 0.15;
-        // Signal 2: tip further from wrist than PIP
-        const tipWrist = Math.hypot(pts[TIPS[i]].x - pts[0].x, pts[TIPS[i]].y - pts[0].y);
-        const pipWrist = Math.hypot(pts[PIPS[i]].x - pts[0].x, pts[PIPS[i]].y - pts[0].y);
-        const sig2 = tipWrist > pipWrist;
-        // Signal 3: PIP angle (straight finger > 150°)
-        const sig3 = angleBetween(pts[MCPS[i]], pts[PIPS[i]], pts[DIPS[i]]) > 150;
-        if ((sig1 ? 1 : 0) + (sig2 ? 1 : 0) + (sig3 ? 1 : 0) >= 2) total++;
+        const sig1 = (dx*upX + dy*upY) > palmLen * 0.13;
+        // S2: tip further from wrist than PIP joint
+        const tipW = Math.hypot(pts[TIPS[i]].x-pts[0].x, pts[TIPS[i]].y-pts[0].y);
+        const pipW = Math.hypot(pts[PIPS[i]].x-pts[0].x, pts[PIPS[i]].y-pts[0].y);
+        const sig2 = tipW > pipW * 1.04;
+        // S3: PIP joint angle (< 145° = bent = not extended)
+        const sig3 = angleBetween(pts[MCPS[i]], pts[PIPS[i]], pts[DIPS[i]]) > 145;
+        // S4: DIP joint angle (second knuckle also straight)
+        const sig4 = angleBetween(pts[PIPS[i]], pts[DIPS[i]], pts[TIPS[i]]) > 145;
+        if ((sig1?1:0)+(sig2?1:0)+(sig3?1:0)+(sig4?1:0) >= 3) total++;
       }
     }
     const raw = Math.min(total, 10);
     this._smoothBuf.push(raw);
-    if (this._smoothBuf.length > 9) this._smoothBuf.shift();
+    if (this._smoothBuf.length > 11) this._smoothBuf.shift();
     return modeOf(this._smoothBuf);
   },
 
@@ -955,119 +963,150 @@ const FaceGame = {
     this.resetCountdown();
   },
 
-  /* ── Advanced face expression detection ──
-     Uses multiple landmark measurements per expression and computes
-     a confidence score (0-1). Picks the expression with highest
-     confidence above threshold. Calibrates against a per-session
-     baseline captured from the first ~30 neutral frames. */
+  /* ── Face expression detection — EAR + MAR + per-person baseline ──
+     EAR (Eye Aspect Ratio) = industry standard for blink/wink detection.
+     MAR (Mouth Aspect Ratio) = standard for mouth openness.
+     Baseline: median of first 45 frames (robust to outliers).
+     Adaptive threshold: expressions detected relative to YOUR neutral face.
+     Confidence scoring picks winner; hysteresis prevents rapid switching. */
   _baseline: null,
   _baselineBuf: [],
-  _BASELINE_FRAMES: 30,
+  _BASELINE_FRAMES: 45,
+  _lastDetected: null,
+  _hysteresisFrames: 0,
+  _HYSTERESIS: 4,
+
+  // EAR = (vertical1 + vertical2) / (2 * horizontal) — Soukupova & Cech 2016
+  _ear(lm, p1, p2, p3, p4, p5, p6) {
+    const v1 = dist(lm[p2], lm[p6]);
+    const v2 = dist(lm[p3], lm[p5]);
+    const h  = dist(lm[p1], lm[p4]);
+    return (v1 + v2) / (2 * h + 0.0001);
+  },
+
+  // MAR = average vertical / horizontal
+  _mar(lm) {
+    const v1 = dist(lm[13],  lm[14]);
+    const v2 = dist(lm[82],  lm[312]);
+    const v3 = dist(lm[81],  lm[311]);
+    const v4 = dist(lm[178], lm[402]);
+    const h  = dist(lm[61],  lm[291]);
+    return (v1 + v2 + v3 + v4) / (4 * h + 0.0001);
+  },
 
   _measureFace(lm) {
     const faceH = dist(lm[10], lm[152]) || 0.001;
     const faceW = dist(lm[234], lm[454]) || 0.001;
 
-    // Mouth openness — average of multiple vertical lip pairs
-    const mouthV1 = dist(lm[13], lm[14]);   // center
-    const mouthV2 = dist(lm[82], lm[312]);  // inner left-right
-    const mouthV3 = dist(lm[81], lm[311]);  // outer left-right
-    const mouthOpen = ((mouthV1 + mouthV2 + mouthV3) / 3) / faceH;
+    // EAR per eye (6-point formula)
+    const earL = this._ear(lm, 33,160,158,133,153,144);   // left eye
+    const earR = this._ear(lm, 362,385,387,263,373,380);  // right eye
 
-    // Mouth width
+    // MAR (mouth aspect ratio)
+    const mar = this._mar(lm);
+
+    // Mouth width normalized to face width
     const mouthWidth = dist(lm[61], lm[291]) / faceW;
 
-    // Mouth corner angle (smile lifts corners → lip corners above center)
+    // Corner lift: how much corners are above lip midline (smile signal)
     const lipMidY = (lm[13].y + lm[14].y) / 2;
-    const cornerLiftL = lipMidY - lm[61].y;  // positive = corner above mid
-    const cornerLiftR = lipMidY - lm[291].y;
-    const cornerLift = ((cornerLiftL + cornerLiftR) / 2) / faceH;
+    const cornerLift = ((lipMidY - lm[61].y) + (lipMidY - lm[291].y)) / (2 * faceH);
 
-    // Eye openness — multi-point average per eye
-    const leftEye1  = dist(lm[159], lm[145]);
-    const leftEye2  = dist(lm[158], lm[153]);
-    const rightEye1 = dist(lm[386], lm[374]);
-    const rightEye2 = dist(lm[385], lm[380]);
-    const leftEye   = ((leftEye1 + leftEye2) / 2) / faceH;
-    const rightEye  = ((rightEye1 + rightEye2) / 2) / faceH;
+    // Brow height — 3 points per brow averaged, normalized to faceH
+    const browL = (dist(lm[70],lm[63]) + dist(lm[105],lm[66]) + dist(lm[107],lm[55])) / (3 * faceH);
+    const browR = (dist(lm[300],lm[293])+ dist(lm[334],lm[296])+ dist(lm[336],lm[285])) / (3 * faceH);
+    const avgBrow = (browL + browR) / 2;
 
-    // Eyebrow height — multiple points per brow
-    const lBrow1 = dist(lm[105], lm[159]), lBrow2 = dist(lm[65], lm[158]);
-    const rBrow1 = dist(lm[334], lm[386]), rBrow2 = dist(lm[295], lm[385]);
-    const leftBrow  = ((lBrow1 + lBrow2) / 2) / faceH;
-    const rightBrow = ((rBrow1 + rBrow2) / 2) / faceH;
-    const avgBrow = (leftBrow + rightBrow) / 2;
+    // Nasolabial fold depth (cheek push from smile) — nostril to mouth corner
+    const nasoL = dist(lm[129], lm[61]) / faceH;
+    const nasoR = dist(lm[358], lm[291]) / faceH;
+    const avgNaso = (nasoL + nasoR) / 2;
 
-    // Eye squint (cheek push-up during smile)
-    const leftSquint  = dist(lm[145], lm[117]) / faceH;
-    const rightSquint = dist(lm[374], lm[346]) / faceH;
-    const avgSquint = (leftSquint + rightSquint) / 2;
+    return { earL, earR, mar, mouthWidth, cornerLift, avgBrow, avgNaso, faceH, faceW };
+  },
 
-    return { mouthOpen, mouthWidth, cornerLift, leftEye, rightEye, avgBrow, avgSquint, faceH, faceW };
+  _medianOf(arr) {
+    const s = [...arr].sort((a, b) => a - b);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
   },
 
   detectExpression(lm) {
     const m = this._measureFace(lm);
     if (m.faceH < 0.01) return null;
 
-    // ── Baseline calibration (first ~30 frames = neutral face) ──
+    // ── Baseline: median of first 45 frames (robust to outliers) ──
     if (!this._baseline) {
-      this._baselineBuf.push({ ...m });
+      this._baselineBuf.push(m);
       if (this._baselineBuf.length >= this._BASELINE_FRAMES) {
-        const avg = {};
-        for (const key of Object.keys(this._baselineBuf[0])) {
-          avg[key] = this._baselineBuf.reduce((s, b) => s + b[key], 0) / this._baselineBuf.length;
+        const keys = Object.keys(this._baselineBuf[0]);
+        const bl = {};
+        for (const k of keys) {
+          bl[k] = this._medianOf(this._baselineBuf.map(f => f[k]));
         }
-        this._baseline = avg;
+        this._baseline = bl;
       }
-      return null; // still calibrating
+      return null; // calibrating
     }
 
     const b = this._baseline;
 
-    // ── Compute confidence scores for each expression ──
+    // Relative deltas vs baseline
+    const marDelta   = m.mar        / (b.mar        || 0.001);
+    const widthDelta = m.mouthWidth / (b.mouthWidth || 0.001);
+    const browDelta  = m.avgBrow    / (b.avgBrow    || 0.001);
+    const earAvg     = (m.earL + m.earR) / 2;
+    const earBase    = (b.earL + b.earR) / 2 || 0.001;
+    const earDelta   = earAvg / earBase;
+    const liftDelta  = (m.cornerLift - b.cornerLift) / (b.faceH || 0.001);
+    const nasoDelta  = b.avgNaso / (m.avgNaso || 0.001); // lower naso = smile
+
+    // ── Confidence scores ──
     const scores = {};
 
-    // Wink: one eye much more closed than the other
-    const eyeRatio = Math.min(m.leftEye, m.rightEye) / (Math.max(m.leftEye, m.rightEye) || 0.001);
-    const openEye = Math.max(m.leftEye, m.rightEye);
-    // Need one eye clearly closed and the other clearly open
-    scores.wink = openEye > b.leftEye * 0.6
-      ? Math.max(0, (1 - eyeRatio / 0.55) * 1.2)
+    // WINK — EAR asymmetry: one eye significantly more closed
+    const earMin = Math.min(m.earL, m.earR);
+    const earMax = Math.max(m.earL, m.earR);
+    const earAsym = earMin / (earMax || 0.001);
+    const earMaxBase = Math.max(b.earL, b.earR) || 0.001;
+    // Only count as wink if the open eye is still reasonably open
+    scores.wink = (earMax > earMaxBase * 0.5 && earAsym < 0.65)
+      ? Math.max(0, (0.65 - earAsym) * 3)
       : 0;
 
-    // Surprise: mouth open + brows up + eyes wide
-    const mouthOpenDelta = m.mouthOpen / (b.mouthOpen || 0.001);
-    const browDelta = m.avgBrow / (b.avgBrow || 0.001);
-    const eyeOpenDelta = ((m.leftEye + m.rightEye) / 2) / ((b.leftEye + b.rightEye) / 2 || 0.001);
+    // SURPRISE — mouth open + brows up + eyes wide
     scores.surprise = Math.min(1,
-      (Math.max(0, mouthOpenDelta - 1.8) * 0.4) +
-      (Math.max(0, browDelta - 1.15) * 0.35) +
-      (Math.max(0, eyeOpenDelta - 1.15) * 0.25)
+      Math.max(0, (marDelta - 1.6) * 0.5) * 0.35 +
+      Math.max(0, (browDelta - 1.12) * 2) * 0.35 +
+      Math.max(0, (earDelta - 1.1)  * 2) * 0.30
     );
 
-    // Open mouth: mouth clearly opened
-    scores.open = Math.min(1, Math.max(0, (mouthOpenDelta - 1.5) * 0.6));
+    // OPEN MOUTH — high MAR, not necessarily brows
+    scores.open = Math.min(1, Math.max(0, (marDelta - 1.4) * 0.7));
 
-    // Raised eyebrows: brows up without mouth open
-    scores.eyebrows = mouthOpenDelta < 1.6
-      ? Math.min(1, Math.max(0, (browDelta - 1.12) * 1.5))
-      : Math.min(1, Math.max(0, (browDelta - 1.12) * 1.5)) * 0.4; // penalize if mouth also open
+    // RAISED EYEBROWS — brows clearly up, mouth mostly closed
+    const browScore = Math.max(0, (browDelta - 1.1) * 2.5);
+    scores.eyebrows = marDelta < 1.5 ? browScore : browScore * 0.35;
 
-    // Smile: wide mouth + corner lift + eye squint
-    const widthDelta = m.mouthWidth / (b.mouthWidth || 0.001);
-    const squintDelta = b.avgSquint / (m.avgSquint || 0.001); // squint = smaller distance
-    const liftScore = Math.max(0, m.cornerLift - (b.cornerLift || 0)) / (m.faceH || 0.001);
-    scores.smile = Math.min(1,
-      (Math.max(0, widthDelta - 1.05) * 0.35) +
-      (Math.max(0, squintDelta - 1.05) * 0.3) +
-      (Math.max(0, liftScore * 25) * 0.35)
-    );
+    // SMILE — corner lift + mouth width + nasolabial fold
+    scores.smile = Math.min(1, Math.max(0,
+      Math.max(0, widthDelta - 1.04) * 0.40 +
+      Math.max(0, liftDelta * 40)    * 0.35 +
+      Math.max(0, nasoDelta - 1.04)  * 0.25
+    ));
 
-    // Pick highest confidence expression above threshold
-    let bestId = null, bestScore = 0.28;
+    // ── Hysteresis: stick with current detection for a few frames ──
+    let bestId = null, bestScore = 0.25;
     for (const [id, score] of Object.entries(scores)) {
       if (score > bestScore) { bestScore = score; bestId = id; }
+    }
+    if (bestId === null && this._lastDetected && this._hysteresisFrames > 0) {
+      this._hysteresisFrames--;
+      return this._lastDetected;
+    }
+    if (bestId !== this._lastDetected) {
+      this._hysteresisFrames = this._HYSTERESIS;
+      this._lastDetected = bestId;
     }
     return bestId;
   },
@@ -1184,14 +1223,26 @@ const FaceGame = {
         if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
           const landmarks = results.multiFaceLandmarks[0];
 
-          // Draw light face mesh tessellation
-          drawConnectors(ctx, landmarks, FACEMESH_TESSELATION, {
-            color: 'rgba(100, 210, 255, 0.12)', lineWidth: 0.5
-          });
-          // Face oval
-          drawConnectors(ctx, landmarks, FACEMESH_FACE_OVAL, {
-            color: 'rgba(251, 191, 36, 0.5)', lineWidth: 1.5
-          });
+          // Calibration progress UI
+          const calibPct = Math.min(100, Math.round(
+            (self._baselineBuf.length / self._BASELINE_FRAMES) * 100
+          ));
+          const isCalibrating = !self._baseline;
+          document.getElementById('calibratingDisplay').style.display = isCalibrating ? '' : 'none';
+          document.getElementById('detectingDisplay').style.display  = isCalibrating ? 'none' : '';
+          if (isCalibrating) {
+            document.getElementById('calibProgressBar').style.width = calibPct + '%';
+          }
+
+          // Draw face mesh — green tint while calibrating, blue when ready
+          const meshColor = isCalibrating
+            ? 'rgba(74, 222, 128, 0.15)'
+            : 'rgba(100, 210, 255, 0.12)';
+          const ovalColor = isCalibrating
+            ? 'rgba(74, 222, 128, 0.6)'
+            : 'rgba(251, 191, 36, 0.5)';
+          drawConnectors(ctx, landmarks, FACEMESH_TESSELATION, { color: meshColor, lineWidth: 0.5 });
+          drawConnectors(ctx, landmarks, FACEMESH_FACE_OVAL,   { color: ovalColor, lineWidth: 1.5 });
 
           // Detect and smooth
           const rawId = self.detectExpression(landmarks);
@@ -1202,6 +1253,8 @@ const FaceGame = {
 
           if (GameManager.currentGame === 'faces') self.onExpressionUpdate(finalId);
         } else {
+          document.getElementById('calibratingDisplay').style.display = 'none';
+          document.getElementById('detectingDisplay').style.display  = '';
           self._smoothBuf.push('none');
           if (self._smoothBuf.length > 11) self._smoothBuf.shift();
           if (GameManager.currentGame === 'faces') self.onExpressionUpdate(null);

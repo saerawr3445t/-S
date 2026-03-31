@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>משחק החשבון עם אצבעות 🖐️</title>
+
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Heebo', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ── Floating bubbles background ── */
+    .bubbles { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.08;
+      animation: float linear infinite;
+    }
+    @keyframes float {
+      0%   { transform: translateY(110vh) scale(0.5); opacity: 0; }
+      10%  { opacity: 0.08; }
+      90%  { opacity: 0.08; }
+      100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+    }
+
+    /* ── Container ── */
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 900px;
+      padding: 20px;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+    }
+    .header h1 {
+      font-size: 2.4rem;
+      font-weight: 900;
+      background: linear-gradient(90deg, #f7971e, #ffd200, #f7971e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      animation: shimmer 3s linear infinite;
+      background-size: 200%;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% center; }
+      100% { background-position: -200% center; }
+    }
+    .header p { font-size: 1rem; color: #aac4ff; margin-top: 4px; }
+
+    /* ── Score bar ── */
+    .score-bar {
+      display: flex;
+      gap: 30px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 50px;
+      padding: 10px 30px;
+      backdrop-filter: blur(8px);
+    }
+    .score-item { text-align: center; }
+    .score-label { font-size: 0.75rem; color: #aac4ff; }
+    .score-value { font-size: 1.8rem; font-weight: 900; }
+    .score-value.win  { color: #4ade80; }
+    .score-value.loss { color: #f87171; }
+    .score-value.total{ color: #fbbf24; }
+
+    /* ── Main game area ── */
+    .game-area {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      width: 100%;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ── Question card ── */
+    .question-card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 30px 40px;
+      text-align: center;
+      flex: 0 0 280px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      transition: transform 0.3s;
+    }
+    .question-label { font-size: 0.9rem; color: #aac4ff; margin-bottom: 12px; }
+    .question-text {
+      font-size: 3.5rem;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .equals { color: #fbbf24; margin: 0 6px; }
+    .question-hint {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: #7dd3fc;
+    }
+
+    /* ── Finger display ── */
+    .finger-display {
+      margin-top: 16px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .finger-label { font-size: 0.8rem; color: #aac4ff; margin-bottom: 6px; }
+    .finger-count {
+      font-size: 4rem;
+      font-weight: 900;
+      color: #fbbf24;
+      line-height: 1;
+      transition: transform 0.15s;
+    }
+    .finger-count.bump { transform: scale(1.3); }
+    .finger-icons {
+      margin-top: 6px;
+      font-size: 1.4rem;
+      letter-spacing: 2px;
+      min-height: 28px;
+    }
+
+    /* ── Countdown ring ── */
+    .countdown-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 14px;
+    }
+    .countdown-ring { position: relative; width: 64px; height: 64px; }
+    .countdown-ring svg { transform: rotate(-90deg); }
+    .countdown-ring circle { transition: stroke-dashoffset 0.1s linear; }
+    .countdown-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: #fbbf24;
+    }
+
+    /* ── Camera card ── */
+    .camera-card {
+      background: rgba(0,0,0,0.35);
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      overflow: hidden;
+      position: relative;
+      flex: 0 0 340px;
+      height: 260px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .camera-card video  { display: none; }
+    .camera-card canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror — CSS handles all mirroring uniformly */
+    }
+    .cam-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.6);
+      color: #aac4ff;
+      font-size: 1rem;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .cam-overlay .cam-icon { font-size: 3rem; }
+    .cam-overlay.hidden { display: none; }
+    .cam-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.55);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      color: #4ade80;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cam-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    /* ── Feedback overlay ── */
+    .feedback {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feedback.show { opacity: 1; pointer-events: auto; }
+    .feedback-bg {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(4px);
+    }
+    .feedback-card {
+      position: relative;
+      border-radius: 30px;
+      padding: 40px 60px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+    @keyframes popIn {
+      0%   { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1);   opacity: 1; }
+    }
+    .feedback-card.correct { background: linear-gradient(135deg, #064e3b, #065f46); border: 2px solid #4ade80; }
+    .feedback-card.wrong   { background: linear-gradient(135deg, #450a0a, #7f1d1d); border: 2px solid #f87171; }
+    .feedback-emoji { font-size: 4rem; }
+    .feedback-title { font-size: 2.2rem; font-weight: 900; margin: 10px 0 6px; }
+    .feedback-card.correct .feedback-title { color: #4ade80; }
+    .feedback-card.wrong   .feedback-title { color: #f87171; }
+    .feedback-sub { font-size: 1.1rem; color: rgba(255,255,255,0.8); }
+
+    /* ── Start screen ── */
+    .start-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+      text-align: center;
+      padding: 30px;
+      gap: 20px;
+    }
+    .start-screen h1 { font-size: 3rem; font-weight: 900; color: #fbbf24; }
+    .start-screen p  { font-size: 1.1rem; color: #aac4ff; max-width: 420px; line-height: 1.6; }
+    .instructions {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 20px;
+      padding: 24px 32px;
+      max-width: 420px;
+      text-align: right;
+    }
+    .instructions h3 { color: #fbbf24; margin-bottom: 12px; font-size: 1.1rem; }
+    .instructions li { color: #e2e8f0; margin-bottom: 8px; font-size: 0.95rem; list-style: none; padding-right: 4px; }
+    .instructions li::before { content: "👉 "; }
+    .start-btn {
+      background: linear-gradient(135deg, #f7971e, #ffd200);
+      border: none;
+      border-radius: 50px;
+      padding: 16px 48px;
+      font-size: 1.3rem;
+      font-weight: 900;
+      color: #1a1a2e;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(247,151,30,0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-family: 'Heebo', sans-serif;
+    }
+    .start-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(247,151,30,0.5);
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      width: 100%;
+      max-width: 600px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 8px;
+      height: 8px;
+    }
+    .progress-bar {
+      height: 8px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #f7971e, #ffd200);
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.8rem; }
+      .question-text { font-size: 2.6rem; }
+      .question-card { flex: 0 0 240px; padding: 20px; }
+      .camera-card { flex: 0 0 280px; height: 210px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating bubbles -->
+<div class="bubbles" id="bubbles"></div>
+
+<!-- START SCREEN -->
+<div class="start-screen" id="startScreen">
+  <div style="font-size:4rem">🖐️🧮</div>
+  <h1>משחק האצבעות!</h1>
+  <p>ענה על שאלות חשבון בעזרת האצבעות שלך מול המצלמה</p>
+  <ul class="instructions">
+    <h3>איך משחקים?</h3>
+    <li>תופיע שאלת חשבון על המסך</li>
+    <li>הראה את התשובה באצבעות מול המצלמה</li>
+    <li>תחזיק יציב 3 שניות לאישור</li>
+    <li>צדקת? +1 ניצחון! טעית? +1 הפסד!</li>
+  </ul>
+  <button class="start-btn" onclick="startGame()">🎮 בואו נשחק!</button>
+</div>
+
+<!-- MAIN GAME -->
+<div class="container">
+  <div class="header">
+    <h1>🖐️ משחק האצבעות 🧮</h1>
+    <p>הראה את התשובה עם האצבעות!</p>
+  </div>
+
+  <!-- Score -->
+  <div class="score-bar">
+    <div class="score-item">
+      <div class="score-label">✅ ניצחונות</div>
+      <div class="score-value win" id="scoreWin">0</div>
+    </div>
+    <div class="score-item">
+      <div class="score-label">❌ הפסדים</div>
+      <div class="score-value loss" id="scoreLoss">0</div>
+    </div>
+    <div class="score-item">
+      <div class="score-label">📊 שאלות</div>
+      <div class="score-value total" id="scoreTotal">0</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <!-- Game area -->
+  <div class="game-area">
+
+    <!-- Question card -->
+    <div class="question-card">
+      <div class="question-label">🧮 כמה זה?</div>
+      <div class="question-text" id="questionText">
+        <span id="qDisplay">...</span>
+      </div>
+      <div class="question-hint">תשובה בין 1 ל-10</div>
+
+      <!-- Finger count -->
+      <div class="finger-display">
+        <div class="finger-label">🖐️ אצבעות שאני רואה</div>
+        <div class="finger-count" id="fingerCount">-</div>
+        <div class="finger-icons" id="fingerIcons"></div>
+      </div>
+
+      <!-- Countdown -->
+      <div class="countdown-wrap" id="countdownWrap" style="display:none">
+        <div class="countdown-ring">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+            <circle id="countCircle" cx="32" cy="32" r="26" fill="none"
+              stroke="#fbbf24" stroke-width="6"
+              stroke-dasharray="163.4" stroke-dashoffset="0"
+              stroke-linecap="round"/>
+          </svg>
+          <div class="countdown-number" id="countdownNum">3</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera card -->
+    <div class="camera-card" id="cameraCard">
+      <video id="inputVideo" playsinline></video>
+      <canvas id="outputCanvas"></canvas>
+      <div class="cam-overlay" id="camOverlay">
+        <div class="cam-icon">📷</div>
+        <div>מצלמה נטענת...</div>
+      </div>
+      <div class="cam-badge" id="camBadge" style="display:none">
+        <div class="cam-dot"></div> LIVE
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FEEDBACK overlay -->
+<div class="feedback" id="feedbackOverlay">
+  <div class="feedback-bg"></div>
+  <div class="feedback-card" id="feedbackCard">
+    <div class="feedback-emoji" id="feedbackEmoji"></div>
+    <div class="feedback-title" id="feedbackTitle"></div>
+    <div class="feedback-sub" id="feedbackSub"></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   BUBBLES BACKGROUND
+════════════════════════════════════════ */
+(function() {
+  const colors = ['#f7971e','#ffd200','#4ade80','#7dd3fc','#a78bfa'];
+  const wrap = document.getElementById('bubbles');
+  for (let i = 0; i < 18; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 40 + Math.random() * 120;
+    b.style.cssText = `
+      width:${size}px; height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      left:${Math.random()*100}%;
+      animation-duration:${8+Math.random()*14}s;
+      animation-delay:${Math.random()*10}s;
+    `;
+    wrap.appendChild(b);
+  }
+})();
+
+/* ════════════════════════════════════════
+   GAME STATE
+════════════════════════════════════════ */
+let scoreWin   = 0;
+let scoreLoss  = 0;
+let scoreTotal = 0;
+let currentAnswer = 0;
+let stableCount   = -1;
+let stableFrames  = 0;
+const STABLE_NEEDED = 90;   // ~3 sec at 30fps
+const CIRCUMFERENCE = 2 * Math.PI * 26; // ≈ 163.4
+
+let countdownActive  = false;
+let countdownProgress = 0;
+let feedbackShowing  = false;
+let gameStarted      = false;
+
+/* ════════════════════════════════════════
+   QUESTIONS
+════════════════════════════════════════ */
+const QUESTION_TYPES = [
+  () => {
+    const a = rnd(1,9), b = rnd(1, 10-a);
+    return { text: `${a} + ${b}`, answer: a + b };
+  },
+  () => {
+    const ans = rnd(1,9), b = rnd(1, 10-ans);
+    return { text: `${ans+b} − ${b}`, answer: ans };
+  },
+  () => {
+    const pairs = [[1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9],[1,10],
+                   [2,1],[2,2],[2,3],[2,4],[2,5],[3,1],[3,2],[3,3],[4,1],[4,2],[5,1],[5,2]];
+    const p = pairs[Math.floor(Math.random()*pairs.length)];
+    return { text: `${p[0]} × ${p[1]}`, answer: p[0]*p[1] };
+  }
+];
+
+function rnd(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generateQuestion() {
+  let q;
+  let tries = 0;
+  do {
+    const type = QUESTION_TYPES[Math.floor(Math.random() * QUESTION_TYPES.length)];
+    q = type();
+    tries++;
+  } while ((q.answer < 1 || q.answer > 10) && tries < 20);
+
+  currentAnswer = q.answer;
+  document.getElementById('qDisplay').textContent = q.text + ' = ?';
+  resetCountdown();
+}
+
+/* ════════════════════════════════════════
+   FINGER COUNTING (MediaPipe landmarks)
+
+   FIX #1 (drawing): CSS scaleX(-1) now mirrors everything uniformly.
+     The JS canvas drawing uses raw lm.x coords (no manual flip),
+     so connectors and landmark dots stay perfectly aligned.
+
+   FIX #2 (thumb): Added a minimum x-distance threshold (0.05) so a
+     thumb that is barely off-center doesn't falsely register as extended.
+════════════════════════════════════════ */
+function countFingers(landmarks) {
+  if (!landmarks || landmarks.length === 0) return 0;
+
+  const TIPS = [4, 8, 12, 16, 20];
+  const PIPS = [3, 6, 10, 14, 18];
+  let count = 0;
+
+  for (const hand of landmarks) {
+    let handCount = 0;
+    const pts = hand;
+
+    // Thumb: compare tip x vs IP x with a minimum threshold to avoid
+    // false positives when the thumb is barely off-center.
+    const thumbTip = pts[4];
+    const thumbIP  = pts[3];
+    const wrist    = pts[0];
+    const isRightHand = wrist.x < pts[5].x; // wrist left of index MCP → right hand
+    const thumbDelta  = thumbTip.x - thumbIP.x;
+
+    if (isRightHand) {
+      if (thumbDelta < -0.05) handCount++; // thumb extends clearly to the left
+    } else {
+      if (thumbDelta >  0.05) handCount++; // thumb extends clearly to the right
+    }
+
+    // Fingers 2-5: tip y above pip y means finger is extended
+    for (let i = 1; i < TIPS.length; i++) {
+      if (pts[TIPS[i]].y < pts[PIPS[i]].y) handCount++;
+    }
+
+    count += handCount;
+  }
+
+  return Math.min(count, 10);
+}
+
+/* ════════════════════════════════════════
+   COUNTDOWN & ANSWER CHECK
+════════════════════════════════════════ */
+function resetCountdown() {
+  stableCount    = -1;
+  stableFrames   = 0;
+  countdownActive = false;
+  countdownProgress = 0;
+  document.getElementById('countdownWrap').style.display = 'none';
+  updateCountdownRing(0);
+}
+
+function updateCountdownRing(progress) {
+  const offset = CIRCUMFERENCE * (1 - progress);
+  document.getElementById('countCircle').style.strokeDashoffset = offset;
+  const secs = Math.ceil((1 - progress) * 3);
+  document.getElementById('countdownNum').textContent = secs;
+}
+
+function onFingerUpdate(fingerCount) {
+  if (feedbackShowing) return;
+
+  // Update UI
+  const el = document.getElementById('fingerCount');
+  if (parseInt(el.textContent) !== fingerCount) {
+    el.textContent = fingerCount > 0 ? fingerCount : '-';
+    el.classList.remove('bump');
+    void el.offsetWidth; // reflow
+    el.classList.add('bump');
+    setTimeout(() => el.classList.remove('bump'), 200);
+  }
+
+  // Finger icons
+  const icons = fingerCount > 0
+    ? Array(fingerCount).fill('🖐️').join('')
+    : '';
+  document.getElementById('fingerIcons').textContent = icons;
+
+  if (fingerCount <= 0) {
+    resetCountdown();
+    return;
+  }
+
+  if (fingerCount !== stableCount) {
+    stableCount  = fingerCount;
+    stableFrames = 0;
+    countdownActive = false;
+    countdownProgress = 0;
+    document.getElementById('countdownWrap').style.display = 'none';
+    return;
+  }
+
+  // Same count — start / advance countdown
+  stableFrames++;
+  countdownActive = true;
+  countdownProgress = stableFrames / STABLE_NEEDED;
+  document.getElementById('countdownWrap').style.display = 'flex';
+  updateCountdownRing(countdownProgress);
+
+  if (stableFrames >= STABLE_NEEDED) {
+    submitAnswer(stableCount);
+  }
+}
+
+function submitAnswer(given) {
+  if (feedbackShowing) return;
+  feedbackShowing = true;
+  resetCountdown();
+
+  const correct = given === currentAnswer;
+  scoreTotal++;
+
+  if (correct) {
+    scoreWin++;
+    showFeedback(true, given);
+  } else {
+    scoreLoss++;
+    showFeedback(false, given);
+  }
+
+  updateScoreUI();
+}
+
+function updateScoreUI() {
+  document.getElementById('scoreWin').textContent   = scoreWin;
+  document.getElementById('scoreLoss').textContent  = scoreLoss;
+  document.getElementById('scoreTotal').textContent = scoreTotal;
+  const pct = scoreTotal > 0 ? (scoreWin / scoreTotal * 100) : 0;
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+/* ════════════════════════════════════════
+   FEEDBACK POPUP
+════════════════════════════════════════ */
+function showFeedback(correct, given) {
+  const overlay = document.getElementById('feedbackOverlay');
+  const card    = document.getElementById('feedbackCard');
+  const emojis  = correct
+    ? ['🎉','⭐','🏆','🥳','✅','💯','🔥','👏']
+    : ['😅','❌','💪','🤔','😬','👀'];
+  const emoji   = emojis[Math.floor(Math.random() * emojis.length)];
+
+  document.getElementById('feedbackEmoji').textContent = emoji;
+  document.getElementById('feedbackTitle').textContent = correct ? 'כל הכבוד! ✅' : 'לא נכון ❌';
+  document.getElementById('feedbackSub').textContent   = correct
+    ? `מצוין! ${given} זו התשובה הנכונה!`
+    : `הראת ${given}, אבל התשובה היא ${currentAnswer}`;
+
+  card.className = 'feedback-card ' + (correct ? 'correct' : 'wrong');
+  overlay.classList.add('show');
+
+  setTimeout(() => {
+    overlay.classList.remove('show');
+    feedbackShowing = false;
+    generateQuestion();
+  }, 2200);
+}
+
+/* ════════════════════════════════════════
+   MEDIAPIPE SETUP
+
+   FIX #1: Removed the JS ctx.translate/scale mirror trick for the image.
+   Now we draw the raw image directly onto the canvas, and let CSS
+   transform: scaleX(-1) handle mirroring for everything uniformly:
+     - camera image  → mirrored by CSS (selfie view) ✓
+     - hand connectors → mirrored by CSS (aligned) ✓
+     - landmark dots   → mirrored by CSS (aligned) ✓
+   All three layers now flip together, so skeleton always overlays correctly.
+════════════════════════════════════════ */
+async function initCamera() {
+  const video  = document.getElementById('inputVideo');
+  const canvas = document.getElementById('outputCanvas');
+  const ctx    = canvas.getContext('2d');
+
+  const handsModel = new Hands({
+    locateFile: (file) =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  });
+
+  handsModel.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.6
+  });
+
+  handsModel.onResults((results) => {
+    canvas.width  = results.image.width;
+    canvas.height = results.image.height;
+
+    // Draw camera feed straight onto canvas — no JS mirroring.
+    // CSS transform: scaleX(-1) on the canvas element handles the mirror.
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+    // Draw hand skeleton and landmarks using raw (non-mirrored) coords.
+    // CSS will flip them along with the image, keeping everything aligned.
+    if (results.multiHandLandmarks) {
+      for (const landmarks of results.multiHandLandmarks) {
+        drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
+          color: 'rgba(100, 210, 255, 0.7)',
+          lineWidth: 2
+        });
+        for (const lm of landmarks) {
+          const x = lm.x * canvas.width;
+          const y = lm.y * canvas.height;
+          ctx.beginPath();
+          ctx.arc(x, y, 5, 0, 2 * Math.PI);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fill();
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Count fingers from raw (non-mirrored) landmark data
+    const count = results.multiHandLandmarks
+      ? countFingers(results.multiHandLandmarks)
+      : 0;
+
+    if (gameStarted) onFingerUpdate(count);
+  });
+
+  const camera = new Camera(video, {
+    onFrame: async () => {
+      await handsModel.send({ image: video });
+    },
+    width: 640,
+    height: 480
+  });
+
+  try {
+    await camera.start();
+    document.getElementById('camOverlay').classList.add('hidden');
+    document.getElementById('camBadge').style.display = 'flex';
+  } catch (e) {
+    document.getElementById('camOverlay').innerHTML =
+      '<div class="cam-icon">🚫</div><div>לא ניתן לגשת למצלמה</div><div style="font-size:0.8rem;color:#f87171;margin-top:8px;">נא לאפשר גישה למצלמה</div>';
+  }
+}
+
+/* ════════════════════════════════════════
+   START GAME
+════════════════════════════════════════ */
+function startGame() {
+  document.getElementById('startScreen').style.display = 'none';
+  gameStarted = true;
+  generateQuestion();
+  initCamera();
+}
+</script>
+</body>
+</html>

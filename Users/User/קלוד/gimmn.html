@@ -521,49 +521,75 @@ function generateQuestion() {
 }
 
 /* ════════════════════════════════════════
-   FINGER COUNTING (MediaPipe landmarks)
+   FINGER COUNTING — rotation-invariant algorithm
 
-   FIX #1 (drawing): CSS scaleX(-1) now mirrors everything uniformly.
-     The JS canvas drawing uses raw lm.x coords (no manual flip),
-     so connectors and landmark dots stay perfectly aligned.
-
-   FIX #2 (thumb): Added a minimum x-distance threshold (0.05) so a
-     thumb that is barely off-center doesn't falsely register as extended.
+   Instead of comparing raw Y coordinates (which breaks when the hand
+   is tilted), we:
+   1. Compute the palm's own "up" direction (wrist → middle-MCP vector).
+   2. Project each finger's (tip − MCP) vector onto that palm direction.
+      A positive projection = finger is extended, regardless of rotation.
+   3. Detect the thumb by comparing its tip distance from the thumb base
+      against the palm width — works for any hand orientation.
+   4. Smooth raw counts over a 7-frame rolling buffer (mode) to prevent
+      jitter from resetting the countdown.
 ════════════════════════════════════════ */
-function countFingers(landmarks) {
-  if (!landmarks || landmarks.length === 0) return 0;
+const _fingerBuf = [];
+const _BUF = 7;
 
-  const TIPS = [4, 8, 12, 16, 20];
-  const PIPS = [3, 6, 10, 14, 18];
-  let count = 0;
+function _mode(arr) {
+  const freq = {};
+  let best = arr[arr.length - 1], bestN = 0;
+  for (const v of arr) {
+    freq[v] = (freq[v] || 0) + 1;
+    if (freq[v] > bestN) { bestN = freq[v]; best = v; }
+  }
+  return best;
+}
 
-  for (const hand of landmarks) {
-    let handCount = 0;
-    const pts = hand;
-
-    // Thumb: compare tip x vs IP x with a minimum threshold to avoid
-    // false positives when the thumb is barely off-center.
-    const thumbTip = pts[4];
-    const thumbIP  = pts[3];
-    const wrist    = pts[0];
-    const isRightHand = wrist.x < pts[5].x; // wrist left of index MCP → right hand
-    const thumbDelta  = thumbTip.x - thumbIP.x;
-
-    if (isRightHand) {
-      if (thumbDelta < -0.05) handCount++; // thumb extends clearly to the left
-    } else {
-      if (thumbDelta >  0.05) handCount++; // thumb extends clearly to the right
-    }
-
-    // Fingers 2-5: tip y above pip y means finger is extended
-    for (let i = 1; i < TIPS.length; i++) {
-      if (pts[TIPS[i]].y < pts[PIPS[i]].y) handCount++;
-    }
-
-    count += handCount;
+function countFingers(multiHandLandmarks) {
+  if (!multiHandLandmarks || multiHandLandmarks.length === 0) {
+    _fingerBuf.push(0);
+    if (_fingerBuf.length > _BUF) _fingerBuf.shift();
+    return _mode(_fingerBuf);
   }
 
-  return Math.min(count, 10);
+  let total = 0;
+
+  for (const pts of multiHandLandmarks) {
+    // ── Palm reference direction: wrist (0) → middle-finger MCP (9) ──
+    const palmdx = pts[9].x - pts[0].x;
+    const palmdy = pts[9].y - pts[0].y;
+    const palmLen = Math.hypot(palmdx, palmdy) || 1;
+    const upX = palmdx / palmLen;   // unit vector pointing "up" along palm
+    const upY = palmdy / palmLen;
+
+    // Palm width (index MCP 5 → pinky MCP 17) — used as scale reference
+    const palmW = Math.hypot(pts[5].x - pts[17].x, pts[5].y - pts[17].y) || 0.1;
+
+    // ── Thumb ──
+    // Measure length from thumb MCP (2) to thumb tip (4).
+    // If it exceeds ~55% of palm width the thumb is considered extended.
+    // This is orientation-independent.
+    const thLen = Math.hypot(pts[4].x - pts[2].x, pts[4].y - pts[2].y);
+    if (thLen > palmW * 0.55) total++;
+
+    // ── Fingers 2–5 (index, middle, ring, pinky) ──
+    // Project (tip − MCP) onto palm-up direction.
+    // Threshold: projection must exceed 18% of palm length.
+    const TIPS = [8, 12, 16, 20];
+    const MCPS = [5,  9, 13, 17];
+    for (let i = 0; i < 4; i++) {
+      const dx = pts[TIPS[i]].x - pts[MCPS[i]].x;
+      const dy = pts[TIPS[i]].y - pts[MCPS[i]].y;
+      const proj = dx * upX + dy * upY;   // positive = tip above MCP in palm space
+      if (proj > palmLen * 0.18) total++;
+    }
+  }
+
+  const raw = Math.min(total, 10);
+  _fingerBuf.push(raw);
+  if (_fingerBuf.length > _BUF) _fingerBuf.shift();
+  return _mode(_fingerBuf);
 }
 
 /* ════════════════════════════════════════

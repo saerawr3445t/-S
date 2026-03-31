@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>משחק החשבון עם אצבעות 🖐️</title>
+  <title>משחקי המצלמה 🎮</title>
 
-  <!-- MediaPipe Hands -->
+  <!-- MediaPipe Hands (Game A) -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Face Mesh (Game B) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <!-- Shared utilities -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 
@@ -56,9 +59,7 @@
     }
 
     /* ── Header ── */
-    .header {
-      text-align: center;
-    }
+    .header { text-align: center; }
     .header h1 {
       font-size: 2.4rem;
       font-weight: 900;
@@ -66,7 +67,6 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      text-shadow: none;
       animation: shimmer 3s linear infinite;
       background-size: 200%;
     }
@@ -103,8 +103,8 @@
       justify-content: center;
     }
 
-    /* ── Question card ── */
-    .question-card {
+    /* ── Question / Expression card ── */
+    .game-card {
       background: rgba(255,255,255,0.07);
       border: 1px solid rgba(255,255,255,0.15);
       border-radius: 24px;
@@ -115,8 +115,8 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
       transition: transform 0.3s;
     }
-    .question-label { font-size: 0.9rem; color: #aac4ff; margin-bottom: 12px; }
-    .question-text {
+    .card-label { font-size: 0.9rem; color: #aac4ff; margin-bottom: 12px; }
+    .card-main-text {
       font-size: 3.5rem;
       font-weight: 900;
       color: #fff;
@@ -126,35 +126,34 @@
       align-items: center;
       justify-content: center;
     }
-    .equals { color: #fbbf24; margin: 0 6px; }
-    .question-hint {
-      margin-top: 14px;
-      font-size: 0.85rem;
-      color: #7dd3fc;
-    }
+    .card-hint { margin-top: 14px; font-size: 0.85rem; color: #7dd3fc; }
 
-    /* ── Finger display ── */
-    .finger-display {
+    /* ── Finger / Expression display ── */
+    .detect-display {
       margin-top: 16px;
       background: rgba(255,255,255,0.05);
       border-radius: 16px;
       padding: 14px;
     }
-    .finger-label { font-size: 0.8rem; color: #aac4ff; margin-bottom: 6px; }
-    .finger-count {
+    .detect-label { font-size: 0.8rem; color: #aac4ff; margin-bottom: 6px; }
+    .detect-value {
       font-size: 4rem;
       font-weight: 900;
       color: #fbbf24;
       line-height: 1;
       transition: transform 0.15s;
     }
-    .finger-count.bump { transform: scale(1.3); }
-    .finger-icons {
+    .detect-value.bump { transform: scale(1.3); }
+    .detect-icons {
       margin-top: 6px;
       font-size: 1.4rem;
       letter-spacing: 2px;
       min-height: 28px;
     }
+
+    /* ── Expression emoji target ── */
+    .expression-emoji { font-size: 5rem; margin: 10px 0; }
+    .expression-name { font-size: 1.8rem; font-weight: 900; color: #fbbf24; margin-bottom: 10px; }
 
     /* ── Countdown ring ── */
     .countdown-wrap {
@@ -193,7 +192,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transform: scaleX(-1); /* mirror — CSS handles all mirroring uniformly */
+      transform: scaleX(-1);
     }
     .cam-overlay {
       position: absolute;
@@ -266,8 +265,8 @@
     .feedback-card.wrong   .feedback-title { color: #f87171; }
     .feedback-sub { font-size: 1.1rem; color: rgba(255,255,255,0.8); }
 
-    /* ── Start screen ── */
-    .start-screen {
+    /* ── Menu screen ── */
+    .menu-screen {
       position: fixed;
       inset: 0;
       z-index: 200;
@@ -278,38 +277,73 @@
       background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
       text-align: center;
       padding: 30px;
-      gap: 20px;
+      gap: 24px;
     }
-    .start-screen h1 { font-size: 3rem; font-weight: 900; color: #fbbf24; }
-    .start-screen p  { font-size: 1.1rem; color: #aac4ff; max-width: 420px; line-height: 1.6; }
-    .instructions {
+    .menu-screen.hidden { display: none; }
+    .menu-screen h1 { font-size: 3rem; font-weight: 900; color: #fbbf24; }
+    .menu-screen p  { font-size: 1.1rem; color: #aac4ff; max-width: 420px; line-height: 1.6; }
+
+    .game-selector {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 600px;
+    }
+    .game-select-card {
       background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 20px;
-      padding: 24px 32px;
-      max-width: 420px;
-      text-align: right;
-    }
-    .instructions h3 { color: #fbbf24; margin-bottom: 12px; font-size: 1.1rem; }
-    .instructions li { color: #e2e8f0; margin-bottom: 8px; font-size: 0.95rem; list-style: none; padding-right: 4px; }
-    .instructions li::before { content: "👉 "; }
-    .start-btn {
-      background: linear-gradient(135deg, #f7971e, #ffd200);
-      border: none;
-      border-radius: 50px;
-      padding: 16px 48px;
-      font-size: 1.3rem;
-      font-weight: 900;
-      color: #1a1a2e;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 30px 28px;
+      width: 260px;
       cursor: pointer;
-      box-shadow: 0 8px 24px rgba(247,151,30,0.4);
-      transition: transform 0.2s, box-shadow 0.2s;
+      backdrop-filter: blur(10px);
+      transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+      text-align: center;
+    }
+    .game-select-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(255,255,255,0.35);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+    }
+    .game-select-icon { font-size: 3.5rem; margin-bottom: 14px; }
+    .game-select-card h3 { font-size: 1.3rem; font-weight: 900; color: #fbbf24; margin-bottom: 8px; }
+    .game-select-card p { font-size: 0.9rem; color: #aac4ff; line-height: 1.5; }
+
+    /* ── Back button ── */
+    .back-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 10;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50px;
+      padding: 8px 20px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #aac4ff;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: background 0.2s, transform 0.2s;
       font-family: 'Heebo', sans-serif;
     }
-    .start-btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(247,151,30,0.5);
+    .back-btn:hover {
+      background: rgba(255,255,255,0.18);
+      transform: translateY(-2px);
     }
+
+    /* ── Game screens ── */
+    .game-screen {
+      display: none;
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .game-screen.active { display: flex; }
 
     /* ── Progress bar ── */
     .progress-wrap {
@@ -330,9 +364,13 @@
     /* ── Responsive ── */
     @media (max-width: 600px) {
       .header h1 { font-size: 1.8rem; }
-      .question-text { font-size: 2.6rem; }
-      .question-card { flex: 0 0 240px; padding: 20px; }
+      .card-main-text { font-size: 2.6rem; }
+      .game-card { flex: 0 0 240px; padding: 20px; }
       .camera-card { flex: 0 0 280px; height: 210px; }
+      .menu-screen h1 { font-size: 2.2rem; }
+      .game-select-card { width: 220px; padding: 22px 18px; }
+      .expression-emoji { font-size: 3.5rem; }
+      .expression-name { font-size: 1.4rem; }
     }
   </style>
 </head>
@@ -341,99 +379,166 @@
 <!-- Floating bubbles -->
 <div class="bubbles" id="bubbles"></div>
 
-<!-- START SCREEN -->
-<div class="start-screen" id="startScreen">
-  <div style="font-size:4rem">🖐️🧮</div>
-  <h1>משחק האצבעות!</h1>
-  <p>ענה על שאלות חשבון בעזרת האצבעות שלך מול המצלמה</p>
-  <ul class="instructions">
-    <h3>איך משחקים?</h3>
-    <li>תופיע שאלת חשבון על המסך</li>
-    <li>הראה את התשובה באצבעות מול המצלמה</li>
-    <li>תחזיק יציב 3 שניות לאישור</li>
-    <li>צדקת? +1 ניצחון! טעית? +1 הפסד!</li>
-  </ul>
-  <button class="start-btn" onclick="startGame()">🎮 בואו נשחק!</button>
+<!-- ═══════════════ MENU SCREEN ═══════════════ -->
+<div class="menu-screen" id="menuScreen">
+  <div style="font-size:4rem">🎮📷</div>
+  <h1>משחקי המצלמה!</h1>
+  <p>בחרו משחק ושחקו עם המצלמה</p>
+  <div class="game-selector">
+    <div class="game-select-card" onclick="GameManager.startGame('fingers')">
+      <div class="game-select-icon">🖐️🧮</div>
+      <h3>משחק האצבעות</h3>
+      <p>ענה על שאלות חשבון בעזרת האצבעות שלך מול המצלמה</p>
+    </div>
+    <div class="game-select-card" onclick="GameManager.startGame('faces')">
+      <div class="game-select-icon">😊🎭</div>
+      <h3>משחק הפרצופים</h3>
+      <p>חקה הבעות פנים מול המצלמה — חיוך, הפתעה, קריצה ועוד!</p>
+    </div>
+  </div>
 </div>
 
-<!-- MAIN GAME -->
-<div class="container">
-  <div class="header">
-    <h1>🖐️ משחק האצבעות 🧮</h1>
-    <p>הראה את התשובה עם האצבעות!</p>
-  </div>
-
-  <!-- Score -->
-  <div class="score-bar">
-    <div class="score-item">
-      <div class="score-label">✅ ניצחונות</div>
-      <div class="score-value win" id="scoreWin">0</div>
+<!-- ═══════════════ GAME A — FINGERS ═══════════════ -->
+<div class="game-screen" id="gameA">
+  <button class="back-btn" onclick="GameManager.showMenu()">חזרה לתפריט →</button>
+  <div class="container">
+    <div class="header">
+      <h1>🖐️ משחק האצבעות 🧮</h1>
+      <p>הראה את התשובה עם האצבעות!</p>
     </div>
-    <div class="score-item">
-      <div class="score-label">❌ הפסדים</div>
-      <div class="score-value loss" id="scoreLoss">0</div>
-    </div>
-    <div class="score-item">
-      <div class="score-label">📊 שאלות</div>
-      <div class="score-value total" id="scoreTotal">0</div>
-    </div>
-  </div>
 
-  <!-- Progress -->
-  <div class="progress-wrap">
-    <div class="progress-bar" id="progressBar"></div>
-  </div>
-
-  <!-- Game area -->
-  <div class="game-area">
-
-    <!-- Question card -->
-    <div class="question-card">
-      <div class="question-label">🧮 כמה זה?</div>
-      <div class="question-text" id="questionText">
-        <span id="qDisplay">...</span>
+    <div class="score-bar">
+      <div class="score-item">
+        <div class="score-label">✅ ניצחונות</div>
+        <div class="score-value win" id="scoreWinA">0</div>
       </div>
-      <div class="question-hint">תשובה בין 1 ל-10</div>
+      <div class="score-item">
+        <div class="score-label">❌ הפסדים</div>
+        <div class="score-value loss" id="scoreLossA">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">📊 שאלות</div>
+        <div class="score-value total" id="scoreTotalA">0</div>
+      </div>
+    </div>
 
-      <!-- Finger count -->
-      <div class="finger-display">
-        <div class="finger-label">🖐️ אצבעות שאני רואה</div>
-        <div class="finger-count" id="fingerCount">-</div>
-        <div class="finger-icons" id="fingerIcons"></div>
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBarA"></div>
+    </div>
+
+    <div class="game-area">
+      <div class="game-card">
+        <div class="card-label">🧮 כמה זה?</div>
+        <div class="card-main-text" id="questionText">
+          <span id="qDisplay">...</span>
+        </div>
+        <div class="card-hint">תשובה בין 1 ל-10</div>
+
+        <div class="detect-display">
+          <div class="detect-label">🖐️ אצבעות שאני רואה</div>
+          <div class="detect-value" id="fingerCount">-</div>
+          <div class="detect-icons" id="fingerIcons"></div>
+        </div>
+
+        <div class="countdown-wrap" id="countdownWrapA" style="display:none">
+          <div class="countdown-ring">
+            <svg width="64" height="64" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+              <circle id="countCircleA" cx="32" cy="32" r="26" fill="none"
+                stroke="#fbbf24" stroke-width="6"
+                stroke-dasharray="163.4" stroke-dashoffset="0"
+                stroke-linecap="round"/>
+            </svg>
+            <div class="countdown-number" id="countdownNumA">3</div>
+          </div>
+        </div>
       </div>
 
-      <!-- Countdown -->
-      <div class="countdown-wrap" id="countdownWrap" style="display:none">
-        <div class="countdown-ring">
-          <svg width="64" height="64" viewBox="0 0 64 64">
-            <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
-            <circle id="countCircle" cx="32" cy="32" r="26" fill="none"
-              stroke="#fbbf24" stroke-width="6"
-              stroke-dasharray="163.4" stroke-dashoffset="0"
-              stroke-linecap="round"/>
-          </svg>
-          <div class="countdown-number" id="countdownNum">3</div>
+      <div class="camera-card" id="cameraCardA">
+        <video id="inputVideoA" playsinline></video>
+        <canvas id="outputCanvasA"></canvas>
+        <div class="cam-overlay" id="camOverlayA">
+          <div class="cam-icon">📷</div>
+          <div>מצלמה נטענת...</div>
+        </div>
+        <div class="cam-badge" id="camBadgeA" style="display:none">
+          <div class="cam-dot"></div> LIVE
         </div>
       </div>
     </div>
-
-    <!-- Camera card -->
-    <div class="camera-card" id="cameraCard">
-      <video id="inputVideo" playsinline></video>
-      <canvas id="outputCanvas"></canvas>
-      <div class="cam-overlay" id="camOverlay">
-        <div class="cam-icon">📷</div>
-        <div>מצלמה נטענת...</div>
-      </div>
-      <div class="cam-badge" id="camBadge" style="display:none">
-        <div class="cam-dot"></div> LIVE
-      </div>
-    </div>
-
   </div>
 </div>
 
-<!-- FEEDBACK overlay -->
+<!-- ═══════════════ GAME B — FACES ═══════════════ -->
+<div class="game-screen" id="gameB">
+  <button class="back-btn" onclick="GameManager.showMenu()">חזרה לתפריט →</button>
+  <div class="container">
+    <div class="header">
+      <h1>😊 משחק הפרצופים 🎭</h1>
+      <p>חקה את ההבעה שמופיעה!</p>
+    </div>
+
+    <div class="score-bar">
+      <div class="score-item">
+        <div class="score-label">✅ ניצחונות</div>
+        <div class="score-value win" id="scoreWinB">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">❌ הפסדים</div>
+        <div class="score-value loss" id="scoreLossB">0</div>
+      </div>
+      <div class="score-item">
+        <div class="score-label">📊 שאלות</div>
+        <div class="score-value total" id="scoreTotalB">0</div>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-bar" id="progressBarB"></div>
+    </div>
+
+    <div class="game-area">
+      <div class="game-card">
+        <div class="card-label">🎭 חקה את ההבעה הזו:</div>
+        <div class="expression-emoji" id="targetEmoji">😊</div>
+        <div class="expression-name" id="targetName">חיוך</div>
+
+        <div class="detect-display">
+          <div class="detect-label">🎭 הבעה שאני רואה</div>
+          <div class="detect-value" id="detectedExpression" style="font-size:2.5rem;">-</div>
+          <div class="detect-icons" id="expressionIcons"></div>
+        </div>
+
+        <div class="countdown-wrap" id="countdownWrapB" style="display:none">
+          <div class="countdown-ring">
+            <svg width="64" height="64" viewBox="0 0 64 64">
+              <circle cx="32" cy="32" r="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+              <circle id="countCircleB" cx="32" cy="32" r="26" fill="none"
+                stroke="#fbbf24" stroke-width="6"
+                stroke-dasharray="163.4" stroke-dashoffset="0"
+                stroke-linecap="round"/>
+            </svg>
+            <div class="countdown-number" id="countdownNumB">3</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="camera-card" id="cameraCardB">
+        <video id="inputVideoB" playsinline></video>
+        <canvas id="outputCanvasB"></canvas>
+        <div class="cam-overlay" id="camOverlayB">
+          <div class="cam-icon">📷</div>
+          <div>מצלמה נטענת...</div>
+        </div>
+        <div class="cam-badge" id="camBadgeB" style="display:none">
+          <div class="cam-dot"></div> LIVE
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FEEDBACK overlay (shared) -->
 <div class="feedback" id="feedbackOverlay">
   <div class="feedback-bg"></div>
   <div class="feedback-card" id="feedbackCard">
@@ -466,77 +571,20 @@
 })();
 
 /* ════════════════════════════════════════
-   GAME STATE
+   SHARED CONSTANTS & UTILITIES
 ════════════════════════════════════════ */
-let scoreWin   = 0;
-let scoreLoss  = 0;
-let scoreTotal = 0;
-let currentAnswer = 0;
-let stableCount   = -1;
-let stableFrames  = 0;
-const STABLE_NEEDED = 90;   // ~3 sec at 30fps
-const CIRCUMFERENCE = 2 * Math.PI * 26; // ≈ 163.4
-
-let countdownActive  = false;
-let countdownProgress = 0;
-let feedbackShowing  = false;
-let gameStarted      = false;
-
-/* ════════════════════════════════════════
-   QUESTIONS
-════════════════════════════════════════ */
-const QUESTION_TYPES = [
-  () => {
-    const a = rnd(1,9), b = rnd(1, 10-a);
-    return { text: `${a} + ${b}`, answer: a + b };
-  },
-  () => {
-    const ans = rnd(1,9), b = rnd(1, 10-ans);
-    return { text: `${ans+b} − ${b}`, answer: ans };
-  },
-  () => {
-    const pairs = [[1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9],[1,10],
-                   [2,1],[2,2],[2,3],[2,4],[2,5],[3,1],[3,2],[3,3],[4,1],[4,2],[5,1],[5,2]];
-    const p = pairs[Math.floor(Math.random()*pairs.length)];
-    return { text: `${p[0]} × ${p[1]}`, answer: p[0]*p[1] };
-  }
-];
+const STABLE_NEEDED  = 90;  // ~3 sec at 30fps
+const CIRCUMFERENCE  = 2 * Math.PI * 26;
 
 function rnd(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function generateQuestion() {
-  let q;
-  let tries = 0;
-  do {
-    const type = QUESTION_TYPES[Math.floor(Math.random() * QUESTION_TYPES.length)];
-    q = type();
-    tries++;
-  } while ((q.answer < 1 || q.answer > 10) && tries < 20);
-
-  currentAnswer = q.answer;
-  document.getElementById('qDisplay').textContent = q.text + ' = ?';
-  resetCountdown();
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-/* ════════════════════════════════════════
-   FINGER COUNTING — rotation-invariant algorithm
-
-   Instead of comparing raw Y coordinates (which breaks when the hand
-   is tilted), we:
-   1. Compute the palm's own "up" direction (wrist → middle-MCP vector).
-   2. Project each finger's (tip − MCP) vector onto that palm direction.
-      A positive projection = finger is extended, regardless of rotation.
-   3. Detect the thumb by comparing its tip distance from the thumb base
-      against the palm width — works for any hand orientation.
-   4. Smooth raw counts over a 7-frame rolling buffer (mode) to prevent
-      jitter from resetting the countdown.
-════════════════════════════════════════ */
-const _fingerBuf = [];
-const _BUF = 7;
-
-function _mode(arr) {
+function modeOf(arr) {
   const freq = {};
   let best = arr[arr.length - 1], bestN = 0;
   for (const v of arr) {
@@ -546,264 +594,515 @@ function _mode(arr) {
   return best;
 }
 
-function countFingers(multiHandLandmarks) {
-  if (!multiHandLandmarks || multiHandLandmarks.length === 0) {
-    _fingerBuf.push(0);
-    if (_fingerBuf.length > _BUF) _fingerBuf.shift();
-    return _mode(_fingerBuf);
-  }
-
-  let total = 0;
-
-  for (const pts of multiHandLandmarks) {
-    // ── Palm reference direction: wrist (0) → middle-finger MCP (9) ──
-    const palmdx = pts[9].x - pts[0].x;
-    const palmdy = pts[9].y - pts[0].y;
-    const palmLen = Math.hypot(palmdx, palmdy) || 1;
-    const upX = palmdx / palmLen;   // unit vector pointing "up" along palm
-    const upY = palmdy / palmLen;
-
-    // Palm width (index MCP 5 → pinky MCP 17) — used as scale reference
-    const palmW = Math.hypot(pts[5].x - pts[17].x, pts[5].y - pts[17].y) || 0.1;
-
-    // ── Thumb ──
-    // Measure length from thumb MCP (2) to thumb tip (4).
-    // If it exceeds ~55% of palm width the thumb is considered extended.
-    // This is orientation-independent.
-    const thLen = Math.hypot(pts[4].x - pts[2].x, pts[4].y - pts[2].y);
-    if (thLen > palmW * 0.55) total++;
-
-    // ── Fingers 2–5 (index, middle, ring, pinky) ──
-    // Project (tip − MCP) onto palm-up direction.
-    // Threshold: projection must exceed 18% of palm length.
-    const TIPS = [8, 12, 16, 20];
-    const MCPS = [5,  9, 13, 17];
-    for (let i = 0; i < 4; i++) {
-      const dx = pts[TIPS[i]].x - pts[MCPS[i]].x;
-      const dy = pts[TIPS[i]].y - pts[MCPS[i]].y;
-      const proj = dx * upX + dy * upY;   // positive = tip above MCP in palm space
-      if (proj > palmLen * 0.18) total++;
-    }
-  }
-
-  const raw = Math.min(total, 10);
-  _fingerBuf.push(raw);
-  if (_fingerBuf.length > _BUF) _fingerBuf.shift();
-  return _mode(_fingerBuf);
-}
-
 /* ════════════════════════════════════════
-   COUNTDOWN & ANSWER CHECK
+   SHARED FEEDBACK POPUP
 ════════════════════════════════════════ */
-function resetCountdown() {
-  stableCount    = -1;
-  stableFrames   = 0;
-  countdownActive = false;
-  countdownProgress = 0;
-  document.getElementById('countdownWrap').style.display = 'none';
-  updateCountdownRing(0);
-}
-
-function updateCountdownRing(progress) {
-  const offset = CIRCUMFERENCE * (1 - progress);
-  document.getElementById('countCircle').style.strokeDashoffset = offset;
-  const secs = Math.ceil((1 - progress) * 3);
-  document.getElementById('countdownNum').textContent = secs;
-}
-
-function onFingerUpdate(fingerCount) {
-  if (feedbackShowing) return;
-
-  // Update UI
-  const el = document.getElementById('fingerCount');
-  if (parseInt(el.textContent) !== fingerCount) {
-    el.textContent = fingerCount > 0 ? fingerCount : '-';
-    el.classList.remove('bump');
-    void el.offsetWidth; // reflow
-    el.classList.add('bump');
-    setTimeout(() => el.classList.remove('bump'), 200);
-  }
-
-  // Finger icons
-  const icons = fingerCount > 0
-    ? Array(fingerCount).fill('🖐️').join('')
-    : '';
-  document.getElementById('fingerIcons').textContent = icons;
-
-  if (fingerCount <= 0) {
-    resetCountdown();
-    return;
-  }
-
-  if (fingerCount !== stableCount) {
-    stableCount  = fingerCount;
-    stableFrames = 0;
-    countdownActive = false;
-    countdownProgress = 0;
-    document.getElementById('countdownWrap').style.display = 'none';
-    return;
-  }
-
-  // Same count — start / advance countdown
-  stableFrames++;
-  countdownActive = true;
-  countdownProgress = stableFrames / STABLE_NEEDED;
-  document.getElementById('countdownWrap').style.display = 'flex';
-  updateCountdownRing(countdownProgress);
-
-  if (stableFrames >= STABLE_NEEDED) {
-    submitAnswer(stableCount);
-  }
-}
-
-function submitAnswer(given) {
-  if (feedbackShowing) return;
-  feedbackShowing = true;
-  resetCountdown();
-
-  const correct = given === currentAnswer;
-  scoreTotal++;
-
-  if (correct) {
-    scoreWin++;
-    showFeedback(true, given);
-  } else {
-    scoreLoss++;
-    showFeedback(false, given);
-  }
-
-  updateScoreUI();
-}
-
-function updateScoreUI() {
-  document.getElementById('scoreWin').textContent   = scoreWin;
-  document.getElementById('scoreLoss').textContent  = scoreLoss;
-  document.getElementById('scoreTotal').textContent = scoreTotal;
-  const pct = scoreTotal > 0 ? (scoreWin / scoreTotal * 100) : 0;
-  document.getElementById('progressBar').style.width = pct + '%';
-}
-
-/* ════════════════════════════════════════
-   FEEDBACK POPUP
-════════════════════════════════════════ */
-function showFeedback(correct, given) {
+function showSharedFeedback(correct, msgOk, msgBad, callback) {
   const overlay = document.getElementById('feedbackOverlay');
   const card    = document.getElementById('feedbackCard');
   const emojis  = correct
     ? ['🎉','⭐','🏆','🥳','✅','💯','🔥','👏']
     : ['😅','❌','💪','🤔','😬','👀'];
-  const emoji   = emojis[Math.floor(Math.random() * emojis.length)];
+  const emoji = emojis[Math.floor(Math.random() * emojis.length)];
 
   document.getElementById('feedbackEmoji').textContent = emoji;
   document.getElementById('feedbackTitle').textContent = correct ? 'כל הכבוד! ✅' : 'לא נכון ❌';
-  document.getElementById('feedbackSub').textContent   = correct
-    ? `מצוין! ${given} זו התשובה הנכונה!`
-    : `הראת ${given}, אבל התשובה היא ${currentAnswer}`;
+  document.getElementById('feedbackSub').textContent   = correct ? msgOk : msgBad;
 
   card.className = 'feedback-card ' + (correct ? 'correct' : 'wrong');
   overlay.classList.add('show');
 
   setTimeout(() => {
     overlay.classList.remove('show');
-    feedbackShowing = false;
-    generateQuestion();
+    callback();
   }, 2200);
 }
 
 /* ════════════════════════════════════════
-   MEDIAPIPE SETUP
-
-   FIX #1: Removed the JS ctx.translate/scale mirror trick for the image.
-   Now we draw the raw image directly onto the canvas, and let CSS
-   transform: scaleX(-1) handle mirroring for everything uniformly:
-     - camera image  → mirrored by CSS (selfie view) ✓
-     - hand connectors → mirrored by CSS (aligned) ✓
-     - landmark dots   → mirrored by CSS (aligned) ✓
-   All three layers now flip together, so skeleton always overlays correctly.
+   GAME MANAGER
 ════════════════════════════════════════ */
-async function initCamera() {
-  const video  = document.getElementById('inputVideo');
-  const canvas = document.getElementById('outputCanvas');
-  const ctx    = canvas.getContext('2d');
+const GameManager = {
+  currentGame: null,
+  cameraInstance: null,
 
-  const handsModel = new Hands({
-    locateFile: (file) =>
-      `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-  });
+  showMenu() {
+    this.stopCamera();
+    if (this.currentGame === 'fingers') FingerGame.stop();
+    if (this.currentGame === 'faces')   FaceGame.stop();
+    this.currentGame = null;
+    document.getElementById('menuScreen').classList.remove('hidden');
+    document.getElementById('gameA').classList.remove('active');
+    document.getElementById('gameB').classList.remove('active');
+  },
 
-  handsModel.setOptions({
-    maxNumHands: 2,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.7,
-    minTrackingConfidence: 0.6
-  });
+  startGame(which) {
+    document.getElementById('menuScreen').classList.add('hidden');
+    this.currentGame = which;
+    if (which === 'fingers') {
+      document.getElementById('gameA').classList.add('active');
+      FingerGame.start();
+    } else {
+      document.getElementById('gameB').classList.add('active');
+      FaceGame.start();
+    }
+  },
 
-  handsModel.onResults((results) => {
-    canvas.width  = results.image.width;
-    canvas.height = results.image.height;
+  stopCamera() {
+    if (this.cameraInstance) {
+      this.cameraInstance.stop();
+      this.cameraInstance = null;
+    }
+  }
+};
 
-    // Draw camera feed straight onto canvas — no JS mirroring.
-    // CSS transform: scaleX(-1) on the canvas element handles the mirror.
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+/* ════════════════════════════════════════
+   GAME A — FINGER COUNTING MATH
+════════════════════════════════════════ */
+const FingerGame = {
+  scoreWin: 0, scoreLoss: 0, scoreTotal: 0,
+  currentAnswer: 0,
+  stableCount: -1, stableFrames: 0,
+  feedbackShowing: false,
+  handsModel: null,
+  _smoothBuf: [],
 
-    // Draw hand skeleton and landmarks using raw (non-mirrored) coords.
-    // CSS will flip them along with the image, keeping everything aligned.
-    if (results.multiHandLandmarks) {
-      for (const landmarks of results.multiHandLandmarks) {
-        drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-          color: 'rgba(100, 210, 255, 0.7)',
-          lineWidth: 2
-        });
-        for (const lm of landmarks) {
-          const x = lm.x * canvas.width;
-          const y = lm.y * canvas.height;
-          ctx.beginPath();
-          ctx.arc(x, y, 5, 0, 2 * Math.PI);
-          ctx.fillStyle = '#fbbf24';
-          ctx.fill();
-          ctx.strokeStyle = '#fff';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
+  QUESTION_TYPES: [
+    () => { const a = rnd(1,9), b = rnd(1,10-a); return { text: `${a} + ${b}`, answer: a+b }; },
+    () => { const ans = rnd(1,9), b = rnd(1,10-ans); return { text: `${ans+b} − ${b}`, answer: ans }; },
+    () => {
+      const pairs = [[1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[1,7],[1,8],[1,9],[1,10],
+                     [2,1],[2,2],[2,3],[2,4],[2,5],[3,1],[3,2],[3,3],[4,1],[4,2],[5,1],[5,2]];
+      const p = pairs[Math.floor(Math.random()*pairs.length)];
+      return { text: `${p[0]} × ${p[1]}`, answer: p[0]*p[1] };
+    }
+  ],
+
+  start() {
+    this.scoreWin = 0; this.scoreLoss = 0; this.scoreTotal = 0;
+    this.feedbackShowing = false;
+    this._smoothBuf = [];
+    this.updateScoreUI();
+    this.generateQuestion();
+    this.initCamera();
+  },
+
+  stop() {
+    this.resetCountdown();
+    this.feedbackShowing = false;
+    this._smoothBuf = [];
+    // Reset camera overlay for next time
+    document.getElementById('camOverlayA').classList.remove('hidden');
+    document.getElementById('camBadgeA').style.display = 'none';
+  },
+
+  generateQuestion() {
+    let q, tries = 0;
+    do {
+      const type = this.QUESTION_TYPES[Math.floor(Math.random() * this.QUESTION_TYPES.length)];
+      q = type();
+      tries++;
+    } while ((q.answer < 1 || q.answer > 10) && tries < 20);
+    this.currentAnswer = q.answer;
+    document.getElementById('qDisplay').textContent = q.text + ' = ?';
+    this.resetCountdown();
+  },
+
+  /* ── Rotation-invariant finger counting ── */
+  countFingers(multiHandLandmarks) {
+    if (!multiHandLandmarks || multiHandLandmarks.length === 0) {
+      this._smoothBuf.push(0);
+      if (this._smoothBuf.length > 7) this._smoothBuf.shift();
+      return modeOf(this._smoothBuf);
+    }
+    let total = 0;
+    for (const pts of multiHandLandmarks) {
+      const palmdx = pts[9].x - pts[0].x;
+      const palmdy = pts[9].y - pts[0].y;
+      const palmLen = Math.hypot(palmdx, palmdy) || 1;
+      const upX = palmdx / palmLen, upY = palmdy / palmLen;
+      const palmW = Math.hypot(pts[5].x - pts[17].x, pts[5].y - pts[17].y) || 0.1;
+      // Thumb
+      if (Math.hypot(pts[4].x - pts[2].x, pts[4].y - pts[2].y) > palmW * 0.55) total++;
+      // Fingers 2-5
+      const TIPS = [8,12,16,20], MCPS = [5,9,13,17];
+      for (let i = 0; i < 4; i++) {
+        const dx = pts[TIPS[i]].x - pts[MCPS[i]].x;
+        const dy = pts[TIPS[i]].y - pts[MCPS[i]].y;
+        if (dx * upX + dy * upY > palmLen * 0.18) total++;
+      }
+    }
+    const raw = Math.min(total, 10);
+    this._smoothBuf.push(raw);
+    if (this._smoothBuf.length > 7) this._smoothBuf.shift();
+    return modeOf(this._smoothBuf);
+  },
+
+  resetCountdown() {
+    this.stableCount = -1;
+    this.stableFrames = 0;
+    document.getElementById('countdownWrapA').style.display = 'none';
+    const offset = CIRCUMFERENCE;
+    document.getElementById('countCircleA').style.strokeDashoffset = offset;
+    document.getElementById('countdownNumA').textContent = '3';
+  },
+
+  updateCountdownRing(progress) {
+    document.getElementById('countCircleA').style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+    document.getElementById('countdownNumA').textContent = Math.ceil((1 - progress) * 3);
+  },
+
+  onFingerUpdate(fingerCount) {
+    if (this.feedbackShowing) return;
+    const el = document.getElementById('fingerCount');
+    if (parseInt(el.textContent) !== fingerCount) {
+      el.textContent = fingerCount > 0 ? fingerCount : '-';
+      el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+      setTimeout(() => el.classList.remove('bump'), 200);
+    }
+    document.getElementById('fingerIcons').textContent =
+      fingerCount > 0 ? Array(fingerCount).fill('🖐️').join('') : '';
+
+    if (fingerCount <= 0) { this.resetCountdown(); return; }
+    if (fingerCount !== this.stableCount) {
+      this.stableCount = fingerCount; this.stableFrames = 0;
+      document.getElementById('countdownWrapA').style.display = 'none';
+      return;
+    }
+    this.stableFrames++;
+    document.getElementById('countdownWrapA').style.display = 'flex';
+    this.updateCountdownRing(this.stableFrames / STABLE_NEEDED);
+    if (this.stableFrames >= STABLE_NEEDED) this.submitAnswer(this.stableCount);
+  },
+
+  submitAnswer(given) {
+    if (this.feedbackShowing) return;
+    this.feedbackShowing = true;
+    this.resetCountdown();
+    const correct = given === this.currentAnswer;
+    this.scoreTotal++;
+    if (correct) this.scoreWin++; else this.scoreLoss++;
+    this.updateScoreUI();
+    const self = this;
+    showSharedFeedback(correct,
+      `מצוין! ${given} זו התשובה הנכונה!`,
+      `הראת ${given}, אבל התשובה היא ${this.currentAnswer}`,
+      () => { self.feedbackShowing = false; self.generateQuestion(); }
+    );
+  },
+
+  updateScoreUI() {
+    document.getElementById('scoreWinA').textContent   = this.scoreWin;
+    document.getElementById('scoreLossA').textContent  = this.scoreLoss;
+    document.getElementById('scoreTotalA').textContent = this.scoreTotal;
+    const pct = this.scoreTotal > 0 ? (this.scoreWin / this.scoreTotal * 100) : 0;
+    document.getElementById('progressBarA').style.width = pct + '%';
+  },
+
+  async initCamera() {
+    const video  = document.getElementById('inputVideoA');
+    const canvas = document.getElementById('outputCanvasA');
+    const ctx    = canvas.getContext('2d');
+    const self   = this;
+
+    if (!this.handsModel) {
+      this.handsModel = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+      });
+      this.handsModel.setOptions({
+        maxNumHands: 2, modelComplexity: 1,
+        minDetectionConfidence: 0.7, minTrackingConfidence: 0.6
+      });
+      this.handsModel.onResults(function(results) {
+        canvas.width = results.image.width;
+        canvas.height = results.image.height;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+        if (results.multiHandLandmarks) {
+          for (const landmarks of results.multiHandLandmarks) {
+            drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
+              color: 'rgba(100, 210, 255, 0.7)', lineWidth: 2
+            });
+            for (const lm of landmarks) {
+              const x = lm.x * canvas.width, y = lm.y * canvas.height;
+              ctx.beginPath(); ctx.arc(x, y, 5, 0, 2 * Math.PI);
+              ctx.fillStyle = '#fbbf24'; ctx.fill();
+              ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+            }
+          }
         }
+
+        const count = self.countFingers(results.multiHandLandmarks);
+        if (GameManager.currentGame === 'fingers') self.onFingerUpdate(count);
+      });
+    }
+
+    const camera = new Camera(video, {
+      onFrame: async () => { await self.handsModel.send({ image: video }); },
+      width: 640, height: 480
+    });
+    GameManager.cameraInstance = camera;
+
+    try {
+      await camera.start();
+      document.getElementById('camOverlayA').classList.add('hidden');
+      document.getElementById('camBadgeA').style.display = 'flex';
+    } catch (e) {
+      document.getElementById('camOverlayA').innerHTML =
+        '<div class="cam-icon">🚫</div><div>לא ניתן לגשת למצלמה</div><div style="font-size:0.8rem;color:#f87171;margin-top:8px;">נא לאפשר גישה למצלמה</div>';
+    }
+  }
+};
+
+/* ════════════════════════════════════════
+   GAME B — FACE EXPRESSION MATCHING
+════════════════════════════════════════ */
+const FaceGame = {
+  scoreWin: 0, scoreLoss: 0, scoreTotal: 0,
+  currentExpression: null,
+  stableExpression: null, stableFrames: 0,
+  feedbackShowing: false,
+  faceMeshModel: null,
+  _smoothBuf: [],
+  _lastTarget: null,
+  _noMatchFrames: 0,
+  NO_MATCH_LIMIT: 300, // ~10 sec at 30fps — skip if can't do expression
+
+  EXPRESSIONS: [
+    { id: 'smile',    emoji: '😊', name: 'חיוך' },
+    { id: 'open',     emoji: '😮', name: 'פה פתוח' },
+    { id: 'eyebrows', emoji: '😳', name: 'גבות מורמות' },
+    { id: 'surprise', emoji: '😱', name: 'הפתעה' },
+    { id: 'wink',     emoji: '😉', name: 'קריצה' },
+  ],
+
+  start() {
+    this.scoreWin = 0; this.scoreLoss = 0; this.scoreTotal = 0;
+    this.feedbackShowing = false;
+    this._smoothBuf = [];
+    this._noMatchFrames = 0;
+    this.updateScoreUI();
+    this.pickExpression();
+    this.initCamera();
+  },
+
+  stop() {
+    this.resetCountdown();
+    this.feedbackShowing = false;
+    this._smoothBuf = [];
+    document.getElementById('camOverlayB').classList.remove('hidden');
+    document.getElementById('camBadgeB').style.display = 'none';
+  },
+
+  pickExpression() {
+    let expr;
+    do {
+      expr = this.EXPRESSIONS[Math.floor(Math.random() * this.EXPRESSIONS.length)];
+    } while (expr === this._lastTarget && this.EXPRESSIONS.length > 1);
+    this._lastTarget = expr;
+    this.currentExpression = expr;
+    this._noMatchFrames = 0;
+    document.getElementById('targetEmoji').textContent = expr.emoji;
+    document.getElementById('targetName').textContent  = expr.name;
+    this.resetCountdown();
+  },
+
+  /* ── Face expression detection using FaceMesh landmarks ── */
+  detectExpression(lm) {
+    // Face reference dimensions
+    const faceH = dist(lm[10], lm[152]);
+    const faceW = dist(lm[234], lm[454]);
+    if (faceH < 0.01 || faceW < 0.01) return null;
+
+    // Mouth openness: upper inner lip (13) ↔ lower inner lip (14)
+    const mouthOpen = dist(lm[13], lm[14]) / faceH;
+
+    // Mouth width: left corner (61) ↔ right corner (291)
+    const mouthWidth = dist(lm[61], lm[291]) / faceW;
+
+    // Left eye openness: upper (159) ↔ lower (145)
+    const leftEye = dist(lm[159], lm[145]) / faceH;
+    // Right eye openness: upper (386) ↔ lower (374)
+    const rightEye = dist(lm[386], lm[374]) / faceH;
+
+    // Eyebrow raise: brow center (105/334) ↔ eye center (159/386)
+    const leftBrow  = dist(lm[105], lm[159]) / faceH;
+    const rightBrow = dist(lm[334], lm[386]) / faceH;
+    const avgBrow   = (leftBrow + rightBrow) / 2;
+
+    // Detection priority: most specific first
+    // Wink: one eye significantly more closed
+    const eyeRatio = Math.min(leftEye, rightEye) / (Math.max(leftEye, rightEye) || 0.001);
+    if (eyeRatio < 0.45 && Math.max(leftEye, rightEye) > 0.02) return 'wink';
+
+    // Surprise: mouth open AND brows up
+    if (mouthOpen > 0.05 && avgBrow > 0.065) return 'surprise';
+
+    // Open mouth
+    if (mouthOpen > 0.06) return 'open';
+
+    // Raised eyebrows (without open mouth)
+    if (avgBrow > 0.07) return 'eyebrows';
+
+    // Smile: wide mouth
+    if (mouthWidth > 0.42) return 'smile';
+
+    return null;
+  },
+
+  resetCountdown() {
+    this.stableExpression = null;
+    this.stableFrames = 0;
+    document.getElementById('countdownWrapB').style.display = 'none';
+    document.getElementById('countCircleB').style.strokeDashoffset = CIRCUMFERENCE;
+    document.getElementById('countdownNumB').textContent = '3';
+  },
+
+  updateCountdownRing(progress) {
+    document.getElementById('countCircleB').style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+    document.getElementById('countdownNumB').textContent = Math.ceil((1 - progress) * 3);
+  },
+
+  onExpressionUpdate(detectedId) {
+    if (this.feedbackShowing) return;
+
+    // Update detected display
+    const el = document.getElementById('detectedExpression');
+    if (detectedId) {
+      const expr = this.EXPRESSIONS.find(e => e.id === detectedId);
+      const display = expr ? expr.emoji : '-';
+      if (el.textContent !== display) {
+        el.textContent = display;
+        el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+        setTimeout(() => el.classList.remove('bump'), 200);
+      }
+      document.getElementById('expressionIcons').textContent = expr ? expr.name : '';
+    } else {
+      el.textContent = '-';
+      document.getElementById('expressionIcons').textContent = '';
+    }
+
+    // No match timeout — skip to next after ~10 sec of no correct match
+    if (detectedId !== this.currentExpression.id) {
+      this._noMatchFrames++;
+      if (this._noMatchFrames >= this.NO_MATCH_LIMIT) {
+        this.submitAnswer(detectedId);
+        return;
       }
     }
 
-    // Count fingers from raw (non-mirrored) landmark data
-    const count = results.multiHandLandmarks
-      ? countFingers(results.multiHandLandmarks)
-      : 0;
+    if (!detectedId) { this.resetCountdown(); return; }
 
-    if (gameStarted) onFingerUpdate(count);
-  });
+    // Only count down when the CORRECT expression is shown
+    if (detectedId !== this.currentExpression.id) {
+      this.resetCountdown();
+      return;
+    }
 
-  const camera = new Camera(video, {
-    onFrame: async () => {
-      await handsModel.send({ image: video });
-    },
-    width: 640,
-    height: 480
-  });
+    if (detectedId !== this.stableExpression) {
+      this.stableExpression = detectedId;
+      this.stableFrames = 0;
+      document.getElementById('countdownWrapB').style.display = 'none';
+      return;
+    }
 
-  try {
-    await camera.start();
-    document.getElementById('camOverlay').classList.add('hidden');
-    document.getElementById('camBadge').style.display = 'flex';
-  } catch (e) {
-    document.getElementById('camOverlay').innerHTML =
-      '<div class="cam-icon">🚫</div><div>לא ניתן לגשת למצלמה</div><div style="font-size:0.8rem;color:#f87171;margin-top:8px;">נא לאפשר גישה למצלמה</div>';
+    this.stableFrames++;
+    document.getElementById('countdownWrapB').style.display = 'flex';
+    this.updateCountdownRing(this.stableFrames / STABLE_NEEDED);
+    if (this.stableFrames >= STABLE_NEEDED) this.submitAnswer(detectedId);
+  },
+
+  submitAnswer(detectedId) {
+    if (this.feedbackShowing) return;
+    this.feedbackShowing = true;
+    this.resetCountdown();
+    const correct = detectedId === this.currentExpression.id;
+    this.scoreTotal++;
+    if (correct) this.scoreWin++; else this.scoreLoss++;
+    this.updateScoreUI();
+    const self = this;
+    const detectedExpr = this.EXPRESSIONS.find(e => e.id === detectedId);
+    showSharedFeedback(correct,
+      `מצוין! עשית ${this.currentExpression.name} מושלם!`,
+      `${detectedExpr ? 'עשית ' + detectedExpr.name : 'לא זיהיתי הבעה'}, אבל ביקשתי ${this.currentExpression.name}`,
+      () => { self.feedbackShowing = false; self.pickExpression(); }
+    );
+  },
+
+  updateScoreUI() {
+    document.getElementById('scoreWinB').textContent   = this.scoreWin;
+    document.getElementById('scoreLossB').textContent  = this.scoreLoss;
+    document.getElementById('scoreTotalB').textContent = this.scoreTotal;
+    const pct = this.scoreTotal > 0 ? (this.scoreWin / this.scoreTotal * 100) : 0;
+    document.getElementById('progressBarB').style.width = pct + '%';
+  },
+
+  async initCamera() {
+    const video  = document.getElementById('inputVideoB');
+    const canvas = document.getElementById('outputCanvasB');
+    const ctx    = canvas.getContext('2d');
+    const self   = this;
+
+    if (!this.faceMeshModel) {
+      this.faceMeshModel = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+      });
+      this.faceMeshModel.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.5
+      });
+      this.faceMeshModel.onResults(function(results) {
+        canvas.width = results.image.width;
+        canvas.height = results.image.height;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+          const landmarks = results.multiFaceLandmarks[0];
+
+          // Draw light face mesh tessellation
+          drawConnectors(ctx, landmarks, FACEMESH_TESSELATION, {
+            color: 'rgba(100, 210, 255, 0.12)', lineWidth: 0.5
+          });
+          // Face oval
+          drawConnectors(ctx, landmarks, FACEMESH_FACE_OVAL, {
+            color: 'rgba(251, 191, 36, 0.5)', lineWidth: 1.5
+          });
+
+          // Detect and smooth
+          const rawId = self.detectExpression(landmarks);
+          self._smoothBuf.push(rawId || 'none');
+          if (self._smoothBuf.length > 7) self._smoothBuf.shift();
+          const smoothed = modeOf(self._smoothBuf);
+          const finalId  = smoothed === 'none' ? null : smoothed;
+
+          if (GameManager.currentGame === 'faces') self.onExpressionUpdate(finalId);
+        } else {
+          self._smoothBuf.push('none');
+          if (self._smoothBuf.length > 7) self._smoothBuf.shift();
+          if (GameManager.currentGame === 'faces') self.onExpressionUpdate(null);
+        }
+      });
+    }
+
+    const camera = new Camera(video, {
+      onFrame: async () => { await self.faceMeshModel.send({ image: video }); },
+      width: 640, height: 480
+    });
+    GameManager.cameraInstance = camera;
+
+    try {
+      await camera.start();
+      document.getElementById('camOverlayB').classList.add('hidden');
+      document.getElementById('camBadgeB').style.display = 'flex';
+    } catch (e) {
+      document.getElementById('camOverlayB').innerHTML =
+        '<div class="cam-icon">🚫</div><div>לא ניתן לגשת למצלמה</div><div style="font-size:0.8rem;color:#f87171;margin-top:8px;">נא לאפשר גישה למצלמה</div>';
+    }
   }
-}
-
-/* ════════════════════════════════════════
-   START GAME
-════════════════════════════════════════ */
-function startGame() {
-  document.getElementById('startScreen').style.display = 'none';
-  gameStarted = true;
-  generateQuestion();
-  initCamera();
-}
+};
 </script>
 </body>
 </html>

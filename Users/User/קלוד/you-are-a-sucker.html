@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>I'm a sucker.</title>
+  <meta name="description" content="A clothing brand for people who know better. And buy it anyway." />
+  <style>
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:     #0f0f0f;
+      --white:     #ffffff;
+      --off-white: #fafafa;
+      --gray-mid:  #e0e0e0;
+      --gray-text: #999999;
+      --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      --max-w: 1100px;
+      --pad-x: 64px;
+      --pad-x-sm: 24px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--white);
+      color: var(--black);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font-family: var(--font); cursor: pointer; }
+
+    .label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--gray-text);
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 14px 36px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      border: 1px solid var(--black);
+      cursor: pointer;
+      transition: background 0.25s, color 0.25s;
+    }
+    .btn-dark  { background: var(--black); color: var(--white); }
+    .btn-dark:hover  { background: var(--white); color: var(--black); }
+    .btn-light { background: transparent; color: var(--black); }
+    .btn-light:hover { background: var(--black); color: var(--white); }
+
+    /* Scroll fade â opacity only, no slide */
+    .fi { opacity: 0; transition: opacity 0.9s ease; }
+    .fi.visible { opacity: 1; }
+    .fi-d1 { transition-delay: 0.15s; }
+    .fi-d2 { transition-delay: 0.3s; }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       NAV
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    #nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--pad-x);
+      height: 60px;
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--gray-mid);
+    }
+
+    .nav-logo svg { height: 26px; width: auto; display: block; }
+
+    .nav-center {
+      display: flex;
+      gap: 40px;
+      list-style: none;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .nav-center a {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      transition: color 0.2s;
+    }
+    .nav-center a:hover { color: var(--black); }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+    .nav-right a {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      transition: color 0.2s;
+    }
+    .nav-right a:hover { color: var(--black); }
+
+    .nav-burger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      padding: 4px;
+    }
+    .nav-burger span {
+      display: block;
+      width: 20px;
+      height: 1px;
+      background: var(--black);
+      transition: transform 0.3s, opacity 0.3s;
+      transform-origin: center;
+    }
+    .nav-burger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+    .nav-burger.open span:nth-child(2) { opacity: 0; }
+    .nav-burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+    .nav-drawer {
+      position: fixed;
+      top: 60px; left: 0; right: 0;
+      background: var(--white);
+      border-bottom: 1px solid var(--gray-mid);
+      z-index: 199;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease, padding 0.3s;
+    }
+    .nav-drawer.open { max-height: 260px; padding: 24px var(--pad-x-sm); }
+    .nav-drawer ul { list-style: none; display: flex; flex-direction: column; }
+    .nav-drawer li a {
+      display: block;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      padding: 10px 0;
+      border-bottom: 1px solid #f2f2f2;
+    }
+    .nav-drawer li:last-child a { border-bottom: none; }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       HERO
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    #hero {
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 120px var(--pad-x) 80px;
+      background: var(--white);
+      text-align: center;
+    }
+
+    .hero-eyebrow {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      margin-bottom: 44px;
+      opacity: 0;
+      animation: fadeIn 1.1s ease forwards 0.1s;
+    }
+
+    .hero-logo-wrap {
+      display: flex;
+      justify-content: center;
+      opacity: 0;
+      animation: fadeIn 1.1s ease forwards 0.35s;
+    }
+    .hero-logo-svg { width: 100%; max-width: 600px; height: auto; }
+
+    .hero-sub {
+      margin-top: 36px;
+      font-size: clamp(13px, 1.3vw, 16px);
+      color: var(--gray-text);
+      letter-spacing: 0.04em;
+      opacity: 0;
+      animation: fadeIn 1.1s ease forwards 0.6s;
+    }
+
+    .hero-actions {
+      margin-top: 52px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+      opacity: 0;
+      animation: fadeIn 1.1s ease forwards 0.85s;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       SHOP
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    #shop {
+      padding: 140px var(--pad-x);
+      background: var(--off-white);
+    }
+
+    .shop-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 80px;
+    }
+
+    .shop-title {
+      font-size: clamp(30px, 4.5vw, 52px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-top: 16px;
+    }
+
+    .shop-count {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gray-text);
+      padding-bottom: 4px;
+    }
+
+    /* Product grid â room to breathe */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 36px;
+    }
+
+    .product-card {
+      background: var(--white);
+      cursor: pointer;
+      position: relative;
+    }
+    .product-card:hover .shirt-svg {
+      transform: scale(1.03) translateY(-4px);
+    }
+
+    .product-img-wrap {
+      aspect-ratio: 4/5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .shirt-svg {
+      width: 72%;
+      height: 72%;
+      transition: transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94);
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,0.11));
+    }
+
+    .product-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      background: var(--black);
+      color: var(--white);
+      padding: 4px 10px;
+    }
+    .product-badge.badge-new {
+      background: transparent;
+      color: var(--black);
+      border: 1px solid var(--black);
+    }
+
+    .product-info { padding: 20px 0 0; }
+
+    .product-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      margin-bottom: 6px;
+    }
+
+    .product-desc {
+      font-size: 11px;
+      color: var(--gray-text);
+      line-height: 1.65;
+      margin-bottom: 16px;
+    }
+
+    .product-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .product-price {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .product-sizes { display: flex; gap: 4px; }
+    .sz {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      border: 1px solid var(--gray-mid);
+      color: #999;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .sz:hover { border-color: var(--black); color: var(--black); }
+
+    .product-add-btn {
+      display: none;
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--black);
+      color: var(--white);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background 0.2s;
+    }
+    .product-card:hover .product-add-btn { display: block; }
+    .product-add-btn:hover { background: #222; }
+
+    .shop-footnote {
+      margin-top: 64px;
+      font-size: 11px;
+      color: var(--gray-text);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       MANIFESTO â just the quote, nothing else
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    #manifesto {
+      background: var(--black);
+      color: var(--white);
+      padding: 160px var(--pad-x);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 60vh;
+    }
+
+    .manifesto-quote {
+      font-size: clamp(40px, 6.5vw, 82px);
+      font-weight: 900;
+      line-height: 1.06;
+      letter-spacing: -0.035em;
+      max-width: 820px;
+    }
+    .manifesto-quote em {
+      font-style: normal;
+      color: #444;
+    }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       ABOUT
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    #about {
+      padding: 140px var(--pad-x);
+      background: var(--white);
+    }
+
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 120px;
+      align-items: start;
+      max-width: var(--max-w);
+    }
+
+    .about-title {
+      font-size: clamp(30px, 4vw, 50px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.06;
+      margin-top: 20px;
+      margin-bottom: 36px;
+    }
+
+    .about-body {
+      font-size: 14px;
+      line-height: 1.95;
+      color: #777;
+    }
+    .about-body p + p { margin-top: 20px; }
+
+    .about-sig {
+      margin-top: 48px;
+      font-size: 10px;
+      color: var(--gray-text);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .about-right { display: flex; flex-direction: column; }
+
+    .about-pillar {
+      padding: 32px 0;
+      border-top: 1px solid #ebebeb;
+    }
+    .about-pillar:last-child { border-bottom: 1px solid #ebebeb; }
+
+    .pillar-num {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      color: #d0d0d0;
+      margin-bottom: 14px;
+    }
+    .pillar-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      margin-bottom: 10px;
+    }
+    .pillar-text {
+      font-size: 12px;
+      line-height: 1.8;
+      color: var(--gray-text);
+    }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       NEWSLETTER
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    #newsletter {
+      background: var(--black);
+      color: var(--white);
+      padding: 130px var(--pad-x);
+      text-align: center;
+    }
+
+    .nl-title {
+      font-size: clamp(26px, 3.5vw, 46px);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.06;
+      margin-bottom: 20px;
+    }
+
+    .nl-sub {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 48px;
+      letter-spacing: 0.01em;
+    }
+
+    .nl-form {
+      display: flex;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .nl-input {
+      flex: 1;
+      height: 46px;
+      padding: 0 18px;
+      font-family: var(--font);
+      font-size: 12px;
+      background: #111;
+      border: 1px solid #222;
+      border-right: none;
+      color: var(--white);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .nl-input::placeholder { color: #3a3a3a; }
+    .nl-input:focus { border-color: #444; }
+
+    .nl-submit {
+      height: 46px;
+      padding: 0 22px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      background: var(--white);
+      color: var(--black);
+      border: 1px solid var(--white);
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    .nl-submit:hover { background: transparent; color: var(--white); }
+
+    .nl-fine {
+      margin-top: 20px;
+      font-size: 10px;
+      color: #2e2e2e;
+      letter-spacing: 0.05em;
+    }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       FOOTER â one line, nothing more
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    footer {
+      background: var(--black);
+      border-top: 1px solid #1a1a1a;
+      padding: 28px var(--pad-x);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-copy {
+      font-size: 10px;
+      color: #2e2e2e;
+      letter-spacing: 0.06em;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 28px;
+    }
+    .footer-links a {
+      font-size: 10px;
+      color: #333;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover { color: #777; }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       TOAST
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--black);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      padding: 14px 22px;
+      border: 1px solid #1e1e1e;
+      z-index: 999;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ââââââââââââââââââââââââââââââââââââââââââââ
+       RESPONSIVE
+    ââââââââââââââââââââââââââââââââââââââââââââ */
+    @media (max-width: 900px) {
+      :root { --pad-x: 40px; }
+      .product-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+      .product-card:nth-child(3) { display: none; }
+      .about-grid { grid-template-columns: 1fr; gap: 64px; }
+    }
+
+    @media (max-width: 640px) {
+      :root { --pad-x: var(--pad-x-sm); }
+      #nav { padding: 0 var(--pad-x-sm); }
+      .nav-center { display: none; }
+      .nav-burger { display: flex; }
+      .hero-logo-svg { max-width: 88vw; }
+      .product-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+      .nl-form { flex-direction: column; }
+      .nl-input { border-right: 1px solid #222; border-bottom: none; }
+      footer { flex-direction: column; align-items: flex-start; gap: 10px; padding: 24px var(--pad-x-sm); }
+      #toast { right: 12px; left: 12px; bottom: 16px; }
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- ââââââââââââââââââââââââââââââââââââââââââ
+     NAV
+ââââââââââââââââââââââââââââââââââââââââââ -->
+<nav id="nav">
+  <a class="nav-logo" href="#" aria-label="I'm a sucker. â Home">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 38" aria-hidden="true">
+      <rect width="5" height="38" fill="#0f0f0f"/>
+      <text x="12" y="29" font-family="'Helvetica Neue',Arial,sans-serif" font-weight="900" font-size="25" fill="#0f0f0f" letter-spacing="-0.5">I'm a sucker.</text>
+    </svg>
+  </a>
+
+  <ul class="nav-center" aria-label="Main navigation">
+    <li><a href="#shop">Shop</a></li>
+    <li><a href="#about">About</a></li>
+    <li><a href="#newsletter">Contact</a></li>
+  </ul>
+
+  <div class="nav-right">
+    <a href="#" onclick="cartClick(event)">Cart (0)</a>
+    <button class="nav-burger" id="burger" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile drawer -->
+<div class="nav-drawer" id="drawer" aria-hidden="true">
+  <ul>
+    <li><a href="#shop"       onclick="closeDrawer()">Shop</a></li>
+    <li><a href="#about"      onclick="closeDrawer()">About</a></li>
+    <li><a href="#newsletter" onclick="closeDrawer()">Contact</a></li>
+  </ul>
+</div>
+
+
+<!-- ââââââââââââââââââââââââââââââââââââââââââ
+     HERO
+ââââââââââââââââââââââââââââââââââââââââââ -->
+<section id="hero">
+  <p class="hero-eyebrow">Est. Now &nbsp;Â·&nbsp; One product &nbsp;Â·&nbsp; No excuses</p>
+
+  <div class="hero-logo-wrap">
+    <svg class="hero-logo-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 108" role="img" aria-label="I'm a sucker.">
+      <rect width="8" height="108" fill="#0f0f0f"/>
+      <text x="24" y="80" font-family="'Helvetica Neue',Arial,sans-serif" font-weight="900" font-size="64" fill="#0f0f0f" letter-spacing="-1.5">I'm a sucker.</text>
+    </svg>
+  </div>
+
+  <p class="hero-sub">I paid $100 for the shirt. So will you.</p>
+
+  <div class="hero-actions">
+    <a href="#shop" class="btn btn-dark">Shop the collection</a>
+    <a href="#about" class="btn btn-light">Why though?</a>
+  </div>
+</section>
+
+
+<!-- ââââââââââââââââââââââââââââââââââââââââââ
+     SHOP
+ââââââââââââââââââââââââââââââââââââââââââ -->
+<section id="shop">
+
+  <div class="shop-header fi">
+    <div>
+      <p class="label" style="margin-bottom:14px;">The Collection</p>
+      <h2 class="shop-title">Wear your<br>honesty.</h2>
+    </div>
+    <span class="shop-count">3 products &nbsp;Â·&nbsp; limited run</span>
+  </div>
+
+  <div class="product-grid fi fi-d1">
+
+    <!-- PRODUCT 1: White tee -->
+    <div class="product-card">
+      <div class="product-img-wrap" style="background:#f0f0f0;">
+        <span class="product-badge">Classic</span>
+        <svg class="shirt-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 380" aria-hidden="true">
+          <defs>
+            <linearGradient id="sg1" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0"   stop-color="#000" stop-opacity="0.05"/>
+              <stop offset="0.3" stop-color="#000" stop-opacity="0"/>
+              <stop offset="0.7" stop-color="#000" stop-opacity="0"/>
+              <stop offset="1"   stop-color="#000" stop-opacity="0.06"/>
+            </linearGradient>
+          </defs>
+          <path d="M115,30 C100,20 62,16 62,16 L12,95 L75,115 L75,358 L245,358 L245,115 L308,95 L258,16 C258,16 222,20 205,30 C192,54 170,63 160,63 C150,63 128,54 115,30 Z" fill="#ffffff" stroke="#d8d8d8" stroke-width="1.5"/>
+          <path d="M115,30 C100,20 62,16 62,16 L12,95 L75,115 L75,358 L245,358 L245,115 L308,95 L258,16 C258,16 222,20 205,30 C192,54 170,63 160,63 C150,63 128,54 115,30 Z" fill="url(#sg1)"/>
+          <text x="160" y="212" text-anchor="middle" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="900" font-size="27" fill="#0f0f0f" letter-spacing="-0.5">I'm a sucker.</text>
+        </svg>
+      </div>
+      <div class="product-info">
+        <p class="product-name">The Classic</p>
+        <p class="product-desc">100% cotton. 0% shame.</p>
+        <div class="product-footer">
+          <span class="product-price">$89</span>
+          <div class="product-sizes">
+            <span class="sz">XS</span><span class="sz">S</span><span class="sz">M</span><span class="sz">L</span><span class="sz">XL</span>
+          </div>
+        </div>
+        <button class="product-add-btn" onclick="showToast('Added to cart. You sucker.')">Add to Cart</button>
+      </div>
+    </div>
+
+    <!-- PRODUCT 2: Black tee -->
+    <div class="product-card">
+      <div class="product-img-wrap" style="background:#e0e0e0;">
+        <span class="product-badge">Bestseller</span>
+        <svg class="shirt-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 380" aria-hidden="true">
+          <defs>
+            <linearGradient id="sg2" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0"   stop-color="#fff" stop-opacity="0.05"/>
+              <stop offset="0.3" stop-color="#fff" stop-opacity="0"/>
+              <stop offset="0.7" stop-color="#fff" stop-opacity="0"/>
+              <stop offset="1"   stop-color="#fff" stop-opacity="0.07"/>
+            </linearGradient>
+          </defs>
+          <path d="M115,30 C100,20 62,16 62,16 L12,95 L75,115 L75,358 L245,358 L245,115 L308,95 L258,16 C258,16 222,20 205,30 C192,54 170,63 160,63 C150,63 128,54 115,30 Z" fill="#0f0f0f"/>
+          <path d="M115,30 C100,20 62,16 62,16 L12,95 L75,115 L75,358 L245,358 L245,115 L308,95 L258,16 C258,16 222,20 205,30 C192,54 170,63 160,63 C150,63 128,54 115,30 Z" fill="url(#sg2)"/>
+          <text x="160" y="198" text-anchor="middle" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="900" font-size="24" fill="#ffffff" letter-spacing="-0.5">I'm a sucker</text>
+          <text x="160" y="225" text-anchor="middle" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="400" font-size="12.5" fill="rgba(255,255,255,0.45)" letter-spacing="0.01em">(I paid $100 for the shirt)</text>
+        </svg>
+      </div>
+      <div class="product-info">
+        <p class="product-name">The Honest One</p>
+        <p class="product-desc">At least you're owning it.</p>
+        <div class="product-footer">
+          <span class="product-price">$119</span>
+          <div class="product-sizes">
+            <span class="sz">XS</span><span class="sz">S</span><span class="sz">M</span><span class="sz">L</span><span class="sz">XL</span>
+          </div>
+        </div>
+        <button class="product-add-btn" onclick="showToast('Added to cart. You sucker.')">Add to Cart</button>
+      </div>
+    </div>
+
+    <!-- PRODUCT 3: Cream tee -->
+    <div class="product-card">
+      <div class="product-img-wrap" style="background:#ece8e0;">
+        <span class="product-badge badge-new">New</span>
+        <svg class="shirt-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 380" aria-hidden="true">
+          <defs>
+            <linearGradient id="sg3" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0"   stop-color="#000" stop-opacity="0.04">
+              <stop offset="0.3" stop-color="#000" stop-opacity="0"/>
+              <stop offset="0.7" stop-color="#000" stop-opacity="0"/>
+              <stop offset="1"   stop-color="#0000" stop-opacity="0.05"/>
+            </linearGradient>
+          </defs>
+          <path d="M115,30 C100,20 62,16 62,16 L12,95 L75,115 L75,358 L245,358 L245,115 L308,95 L258,16 C258,16 222,20 205,30 C192,54 170,63 160,63 C150,63 128,54 115,30 Z" fill="#f5f0e6" stroke="#d2ccc0" stroke-width="1.5"/>
+          <path d="M115,30 C100,20 62,16 62,16 L12,95 L75,115 L75,358 L245,358 L245,115 L308,95 L258,16 C258,16 222,20 205,30 C192,54 170,63 160,63 C150,63 128,54 115,30 Z" fill="url(#sg3)"/>
+          <text x="160" y="198" text-anchor="middle" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="900" font-size="24" fill="#0f0f0f" letter-spacing="-0.5">everyone's</text>
+          <text x="160" y="226" text-anchor="middle" font-family="'Helvetica Neue',Helvetica,Arial,sans-serif" font-weight="900" font-size="24" fill="#0f0f0f" letter-spacing="-0.5">a sucker.</text>
+        </svg>
+      </div>
+      <div class="product-info">
+        <p class="product-name">The Group Edition</p>
+        <p class="product-desc">For someone you love. Or don't.</p>
+        <div class="product-footer">
+          <span class="product-price">$95</span>
+          <div class="product-sizes">
+            <span class="sz">XS</span><span class="sz">S</span><span class="sz">M</span><span class="sz">L</span><span class="sz">XL</span>
+          </div>
+        </div>
+        <button class="product-add-btn" onclick="showToast('Added to cart. You sucker.')">Add to Cart</button>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="shop-footnote fi fi-d2">
+    Three shirts. All say the same thing.
+  </p>
+
+</section>
+
+
+<!-- ââââââââââââââââââââââââââââââââââââââââââ
+     MANIFESTO â the quote. nothing else.
+ââââââââââââââââââââââââââââââââââââââââââ -->
+<section id="manifesto">
+  <blockquote class="manifesto-quote fi">
+    "At least we're<br>
+    <em>honest about it."</em>
+  </blockquote>
+</section>
+
+
+<!-- ââââââââââââââââââââââââââââââââââââââââââ
+     ABOUT
+ââââââââââââââââââââââââââââââââââââââââââ -->
+<section id="about">
+  <div class="about-grid">
+
+    <div class="about-left fi">
+      <p class="label">About the brand</p>
+      <h2 class="about-title">We make clothes.<br>You buy them.<br>Simple.</h2>
+      <div class="about-body">
+        <p>
+          No mission statement. No founder story about a trip to Bali.
+          Just fabric with an honest price tag.
+        </p>
+        <p>
+          The name isn't an insult. It's a mirror.
+          You know what you're doing. So do we.
+          And somehow that makes it better.
+        </p>
+      </div>
+      <p class="about-sig">I'm a sucker. &nbsp;Â·&nbsp; Honesty, reluctantly. Since now.</p>
+    </div>
+
+    <div class="about-right fi fi-d1">
+      <div class="about-pillar">
+        <p class="pillar-num">01</p>
+        <p class="pillar-title">Transparent pricing.</p>
+        <p class="pillar-text">It costs what it costs. No fake sales, no inflated "original" prices. Just a number.</p>
+      </div>
+      <div class="about-pillar">
+        <p class="pillar-num">02</p>
+        <p class="pillar-title">No brand values.</p>
+        <p class="pillar-text">We have a shirt. If that's enough for you, great.</p>
+      </div>
+      <div class="about-pillar">
+        <p class="pillar-num">03</p>
+        <p class="pillar-title">Small by design.</p>
+        <p class="pillar-text">We're not scaling. We're making a few things we like, selling them to people we assume are adults.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ââââââââââââââââââââââââââââââââââââââââââ
+     NEWSLETTER
+ââââââââââââââââââââââââââââââââââââââââââ -->
+<section id="newsletter">
+  <div class="fi">
+    <p class="label" style="color:#444; margin-bottom:28px; letter-spacing:0.3em;">Stay uninformed</p>
+    <h2 class="nl-title">The email nobody<br>asked for.</h2>
+    <p class="nl-sub">A link and a price. That's it.</p>
+    <form class="nl-form" onsubmit="nlSubmit(event)">
+      <input class="nl-input" type="email" placeholder="your@email.com" required />
+      <button class="nl-submit" type="submit">Sign up</button>
+    </form>
+    <p class="nl-fine">By subscribing you agree that you are, in fact, a sucker.</p>
+  </div>
+</section>
+
+
+<!-- ââââââââââââââââââââââââââââââââââââââââââ
+     FOOTER â one line.
+ââââââââââââââââââââââââââââââââââââââââââ -->
+<footer>
+  <p class="footer-copy">Â© 2026 I'm a sucker. &nbsp;Â·&nbsp; You didn't have to. And yet.</p>
+  <div class="footer-links">
+    <a href="#shop">Shop</a>
+    <a href="#about">About</a>
+    <a href="#newsletter">Contact</a>
+  </div>
+</footer>
+
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+
+<script>
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.fi').forEach(el => io.observe(el));
+
+  const nav = document.getElementById('nav');
+  window.addEventListener('scroll', () => {
+    nav.classList.toggle('scrolled', window.scrollY > 80);
+  }, { passive: true });
+
+  const burger  = document.getElementById('burger');
+  const drawer  = document.getElementById('drawer');
+  burger.addEventListener('click', () => {
+    const open = burger.classList.toggle('open');
+    drawer.classList.toggle('open', open);
+    burger.setAttribute('aria-expanded', open);
+    drawer.setAttribute('aria-hidden', !open);
+    document.body.style.overflow = open ? 'hidden' : '';
+  });
+  function closeDrawer() {
+    burger.classList.remove('open');
+    drawer.classList.remove('open');
+    burger.setAttribute('aria-expanded', 'false');
+    drawer.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  function cartClick(e) {
+    e.preventDefault();
+    showToast('Your cart is empty. Obviously.');
+  }
+
+  function nlSubmit(e) {
+    e.preventDefault();
+    const input = e.target.querySelector('input');
+    showToast('Subscribed. We\u2019ll be in touch. Unfortunately.');
+    input.value = '';
+  }
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  }
+</script>
+
+</body>
+</html>

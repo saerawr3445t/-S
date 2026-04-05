@@ -1198,7 +1198,23 @@ async function startAnalysis(dataUrl) {
 
   } catch (err) {
     console.error('Analysis error:', err);
-    showError('Error analyzing the photo. Please try a different image.');
+    const isHe = currentLang === 'he';
+    let msg;
+    const e = err?.message || '';
+    if (e.includes('Failed to fetch') || e.includes('NetworkError') || e.includes('Load failed')) {
+      msg = isHe
+        ? 'שגיאת רשת — לא ניתן לטעון מודלי AI. בדוק חיבור לאינטרנט.'
+        : 'Network error — could not load AI models. Check your internet connection.';
+    } else if (e.includes('faceapi') || e.includes('model')) {
+      msg = isHe
+        ? 'שגיאה בטעינת מודלים — נסה לרענן את הדף.'
+        : 'Model loading error — try refreshing the page.';
+    } else {
+      msg = isHe
+        ? 'שגיאה בניתוח התמונה. נסה תמונה אחרת.'
+        : 'Error analyzing the photo. Please try a different image.';
+    }
+    showError(msg);
   }
 }
 
@@ -1371,26 +1387,45 @@ function enhanceImage(srcCanvas) {
 /* ════════════════════════════════════════
    MODEL LOADING
 ════════════════════════════════════════ */
+const MODEL_URL_FALLBACK = 'https://unpkg.com/face-api.js@0.22.2/weights';
+
 async function loadModels() {
   if (!modelsLoaded) {
-    await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-      faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
-    ]);
+    // Try primary CDN first, fallback to unpkg
+    try {
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
+      ]);
+    } catch (e) {
+      console.warn('Primary model CDN failed, trying fallback...', e);
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL_FALLBACK),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL_FALLBACK),
+        faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL_FALLBACK),
+      ]);
+    }
     modelsLoaded = true;
   }
 
+  // FaceMesh is optional — if it fails we fall back to basic beauty score
   if (!faceMeshReady) {
-    faceMesh = new FaceMesh({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-    });
-    faceMesh.setOptions({
-      maxNumFaces: 1,
-      refineLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
+    try {
+      if (typeof FaceMesh === 'undefined') throw new Error('FaceMesh not loaded');
+      faceMesh = new FaceMesh({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+      });
+      faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+    } catch (e) {
+      console.warn('MediaPipe FaceMesh unavailable, using basic beauty score:', e);
+      faceMesh = null;
+    }
     faceMeshReady = true;
   }
 }
@@ -1399,20 +1434,24 @@ async function loadModels() {
    MEDIAPIPE LANDMARKS (static image)
 ════════════════════════════════════════ */
 function getMediaPipeLandmarks(canvas) {
+  if (!faceMesh) return Promise.resolve(null);
   return new Promise((resolve) => {
     let resolved = false;
-    faceMesh.onResults((results) => {
-      if (resolved) return;
-      resolved = true;
-      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-        resolve(results.multiFaceLandmarks[0]);
-      } else {
-        resolve(null);
-      }
-    });
-    // Timeout fallback
-    setTimeout(() => { if (!resolved) { resolved = true; resolve(null); } }, 8000);
-    faceMesh.send({ image: canvas });
+    try {
+      faceMesh.onResults((results) => {
+        if (resolved) return;
+        resolved = true;
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+          resolve(results.multiFaceLandmarks[0]);
+        } else {
+          resolve(null);
+        }
+      });
+      setTimeout(() => { if (!resolved) { resolved = true; resolve(null); } }, 8000);
+      faceMesh.send({ image: canvas });
+    } catch (e) {
+      if (!resolved) { resolved = true; resolve(null); }
+    }
   });
 }
 
@@ -1565,17 +1604,17 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
   const photo = document.getElementById('resultPhoto');
   photo.src = dataUrl;
 
-  if (mpLandmarks) {
-    const rc = document.getElementById('resultCanvas');
-    rc.width = 280;
-    rc.height = 280;
-    const ctx = rc.getContext('2d');
-    ctx.clearRect(0, 0, 280, 280);
-    // Draw subtle mesh
-    drawConnectors(ctx, mpLandmarks, FACEMESH_TESSELATION,
-      { color: 'rgba(170,196,255,0.12)', lineWidth: 0.5 });
-    drawConnectors(ctx, mpLandmarks, FACEMESH_FACE_OVAL,
-      { color: 'rgba(251,191,36,0.35)', lineWidth: 1.5 });
+  if (mpLandmarks && typeof drawConnectors === 'function' && typeof FACEMESH_TESSELATION !== 'undefined') {
+    try {
+      const rc = document.getElementById('resultCanvas');
+      rc.width = 280; rc.height = 280;
+      const ctx = rc.getContext('2d');
+      ctx.clearRect(0, 0, 280, 280);
+      drawConnectors(ctx, mpLandmarks, FACEMESH_TESSELATION,
+        { color: 'rgba(170,196,255,0.12)', lineWidth: 0.5 });
+      drawConnectors(ctx, mpLandmarks, FACEMESH_FACE_OVAL,
+        { color: 'rgba(251,191,36,0.35)', lineWidth: 1.5 });
+    } catch (e) { /* skip mesh overlay silently */ }
   }
 
   // Age — animated count-up

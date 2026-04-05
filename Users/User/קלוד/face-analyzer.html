@@ -1621,8 +1621,8 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
   const ageEl = document.getElementById('ageValue');
   animateCount(ageEl, 0, age, 1200);
   // Age range — use Claude's if available, else ±3
-  const ageRangeText = (beautyResult && beautyResult._ageRange)
-    ? beautyResult._ageRange
+  const ageRangeText = (beauty && beauty._ageRange)
+    ? beauty._ageRange
     : `${age - 3} – ${age + 3}`;
   document.getElementById('ageRange').textContent = ageRangeText;
 

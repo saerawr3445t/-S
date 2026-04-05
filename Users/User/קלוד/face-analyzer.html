@@ -1,0 +1,2043 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Face Analyzer</title>
+
+  <!-- face-api.js for age & gender -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <!-- MediaPipe Face Mesh for beauty score landmarks -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Heebo', sans-serif;
+      background: #f4f6fb;
+      min-height: 100vh;
+      color: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    /* bubbles hidden */
+    .bubbles { display: none; }
+
+    /* ── Container ── */
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      width: 100%;
+      max-width: 1100px;
+      padding: 40px 24px 80px;
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-top: 10px; }
+    .header h1 {
+      font-size: 3rem;
+      font-weight: 900;
+      background: linear-gradient(90deg, #f7971e, #f59e0b, #f7971e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 3s linear infinite;
+      background-size: 200%;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% center; }
+      100% { background-position: -200% center; }
+    }
+    .header p { font-size: 1.1rem; color: #6b7280; margin-top: 8px; }
+
+    /* ── Card (replaces glass) ── */
+    .glass {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      padding: 32px;
+    }
+
+    /* ── Upload area ── */
+    .upload-area {
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: 2px dashed #d1d5db;
+    }
+    .upload-area:hover, .upload-area.drag-over {
+      border-color: #f59e0b;
+      background: #fffbeb;
+      transform: translateY(-2px);
+    }
+    .upload-icon {
+      font-size: 4.5rem;
+      margin-bottom: 12px;
+    }
+    .upload-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+    .upload-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 16px; }
+    .upload-or {
+      color: #9ca3af;
+      margin: 12px 0;
+      font-size: 0.85rem;
+    }
+    .upload-btn {
+      background: linear-gradient(135deg, #f7971e, #ffd200);
+      color: #1a1a2e;
+      border: none;
+      border-radius: 50px;
+      padding: 12px 32px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: 'Heebo', sans-serif;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .upload-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 20px rgba(247,151,30,0.4);
+    }
+    #fileInput { display: none; }
+
+    /* ── Processing screen ── */
+    .processing { display: none; width: 100%; max-width: 600px; text-align: center; }
+    .processing-img {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid #e5e7eb;
+      margin-bottom: 24px;
+    }
+    .processing-steps { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1rem;
+      color: #d1d5db;
+      transition: color 0.4s;
+    }
+    .step.active { color: #f59e0b; }
+    .step.done { color: #10b981; }
+    .step-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      background: #f3f4f6;
+      flex-shrink: 0;
+      transition: background 0.4s;
+    }
+    .step.active .step-icon { background: #fef3c7; }
+    .step.done .step-icon { background: #d1fae5; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(251,191,36,0.3);
+      border-top-color: #fbbf24;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* ── Results screen ── */
+    .results { display: none; width: 100%; }
+
+    .results-photo-wrap {
+      position: relative;
+      width: 340px;
+      height: 340px;
+      margin: 0 auto 28px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 2px solid #e5e7eb;
+    }
+    .results-photo-wrap img, .results-photo-wrap canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+    }
+
+    .results-cards {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .result-card {
+      flex: 1;
+      min-width: 180px;
+      max-width: 300px;
+      text-align: center;
+      padding: 32px 24px;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: cardIn 0.5s ease forwards;
+    }
+    .result-card:nth-child(1) { animation-delay: 0.1s; }
+    .result-card:nth-child(2) { animation-delay: 0.3s; }
+    .result-card:nth-child(3) { animation-delay: 0.5s; }
+    .result-card-center {
+      transform: scale(1.06);
+      box-shadow: 0 8px 32px rgba(251,191,36,0.18) !important;
+      border-color: #fcd34d !important;
+      z-index: 1;
+    }
+
+    @keyframes cardIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-label {
+      font-size: 0.8rem;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .result-value {
+      font-size: 2.8rem;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+    .result-sub {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+
+    /* Age color */
+    .age-value { color: #0ea5e9; }
+    /* Gender color */
+    .gender-value { color: #8b5cf6; }
+    .gender-male   { color: #3b82f6 !important; }
+    .gender-female { color: #ec4899 !important; }
+    .gender-icon { font-size: 2.2rem; margin-bottom: 4px; }
+    .gender-bar {
+      width: 100%;
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .gender-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #c084fc, #a78bfa);
+      transition: width 1.5s ease;
+      width: 0%;
+    }
+
+    /* Beauty ring */
+    .beauty-ring-wrap {
+      position: relative;
+      width: 110px;
+      height: 110px;
+      margin: 0 auto 8px;
+    }
+    .beauty-ring-wrap svg {
+      transform: rotate(-90deg);
+      width: 110px;
+      height: 110px;
+    }
+    .ring-bg { fill: none; stroke: #e5e7eb; stroke-width: 8; }
+    .ring-fill {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1.5s ease, stroke 0.5s;
+    }
+    .beauty-number {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 900;
+    }
+
+    /* Sub-scores */
+    .sub-scores {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 16px;
+    }
+    .sub-score {
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 8px 14px;
+      font-size: 0.78rem;
+      color: #374151;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sub-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* Disclaimer */
+    .disclaimer {
+      text-align: center;
+      font-size: 0.78rem;
+      color: #9ca3af;
+      margin-top: 20px;
+      max-width: 500px;
+    }
+
+    /* Reset button */
+    .reset-btn {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      color: #374151;
+      border-radius: 50px;
+      padding: 12px 32px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: 'Heebo', sans-serif;
+      cursor: pointer;
+      margin-top: 24px;
+      transition: all 0.2s;
+    }
+    .reset-btn:hover {
+      background: #e5e7eb;
+      transform: translateY(-1px);
+    }
+
+    /* Error */
+    .error-msg {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+      color: #dc2626;
+      max-width: 520px;
+      width: 100%;
+    }
+    .error-msg .error-icon { font-size: 2.5rem; margin-bottom: 8px; }
+    .error-msg .error-text { font-size: 1rem; }
+
+
+    /* Camera screen */
+    .camera-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 520px;
+    }
+    .camera-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 2px solid #d1d5db;
+      background: #000;
+      aspect-ratio: 4/3;
+    }
+    #cameraVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* mirror */
+      display: block;
+    }
+    #cameraOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    .tip-bar {
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      transition: background 0.3s, color 0.3s;
+      background: #f3f4f6;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+    .tip-bar.tip-ok {
+      background: rgba(74,222,128,0.15);
+      color: #4ade80;
+      border-color: rgba(74,222,128,0.3);
+    }
+    .tip-bar.tip-warn {
+      background: rgba(251,191,36,0.12);
+      color: #fbbf24;
+      border-color: rgba(251,191,36,0.25);
+    }
+    .camera-controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+    .capture-btn {
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      background: #fff;
+      border: 4px solid rgba(255,255,255,0.4);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 0 0 0 rgba(255,255,255,0.3);
+      position: relative;
+    }
+    .capture-btn::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      background: #f87171;
+      transition: background 0.3s;
+    }
+    .capture-btn.ready::after { background: #4ade80; }
+    .capture-btn:hover { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(255,255,255,0.1); }
+    .cam-cancel-btn {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      color: #374151;
+      border-radius: 50px;
+      padding: 10px 22px;
+      font-size: 0.9rem;
+      font-family: 'Heebo', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .cam-cancel-btn:hover { background: #e5e7eb; }
+    .cam-guide-text {
+      font-size: 0.78rem;
+      color: #9ca3af;
+      text-align: center;
+    }
+
+    /* Camera button in upload area */
+    .camera-launch-btn {
+      background: #f3f4f6;
+      border: 1px solid #d1d5db;
+      color: #374151;
+      border-radius: 50px;
+      padding: 10px 24px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      font-family: 'Heebo', sans-serif;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+    .camera-launch-btn:hover { background: #e5e7eb; }
+
+    /* Lang toggle */
+    .lang-toggle {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      z-index: 10;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      color: #9ca3af;
+      border-radius: 12px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-family: 'Heebo', sans-serif;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .lang-toggle:hover { color: #374151; border-color: #d1d5db; }
+
+    /* ── API Key settings panel ── */
+    .api-settings-btn {
+      position: fixed;
+      bottom: 16px;
+      left: 70px;
+      z-index: 10;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      color: #9ca3af;
+      border-radius: 12px;
+      padding: 5px 10px;
+      font-size: 0.72rem;
+      font-family: 'Heebo', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .api-settings-btn:hover { color: #374151; border-color: #d1d5db; }
+    .api-settings-btn.active {
+      background: linear-gradient(135deg, #f7971e22, #ffd20022);
+      border-color: #f59e0b;
+      color: #92400e;
+    }
+    .api-panel {
+      position: fixed;
+      bottom: 52px;
+      left: 16px;
+      z-index: 20;
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      padding: 16px 18px;
+      width: 300px;
+      display: none;
+      animation: panelIn 0.15s ease;
+    }
+    @keyframes panelIn {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .api-panel-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+    .api-panel-sub {
+      font-size: 0.74rem;
+      color: #9ca3af;
+      margin-bottom: 10px;
+    }
+    .api-key-input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-family: monospace;
+      color: #374151;
+      background: #f9fafb;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .api-key-input:focus { border-color: #f59e0b; background: #fff; }
+    .ai-mode-tag {
+      display: inline-block;
+      background: linear-gradient(135deg, #f7971e, #ffd200);
+      color: #1a1a2e;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      margin-top: 8px;
+      display: none;
+    }
+    .model-btn {
+      flex: 1;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #f9fafb;
+      cursor: pointer;
+      font-family: 'Heebo', sans-serif;
+      text-align: center;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .model-btn.active {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .model-btn:hover { border-color: #d1d5db; }
+    .model-name { font-size: 0.82rem; font-weight: 700; color: #374151; }
+    .model-desc { font-size: 0.68rem; color: #9ca3af; }
+    .model-btn.active .model-name { color: #92400e; }
+    .model-btn.active .model-desc { color: #b45309; }
+
+    .ai-strengths {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .ai-strength-chip {
+      background: linear-gradient(135deg, #fef9c3, #fef3c7);
+      border: 1px solid #fcd34d;
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 0.8rem;
+      color: #92400e;
+      font-weight: 600;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .container { padding: 24px 14px 90px; gap: 20px; }
+      .header { margin-top: 4px; }
+      .header h1 { font-size: 2rem; }
+      .header p { font-size: 0.9rem; }
+      .glass { padding: 20px 16px; border-radius: 18px; }
+
+      /* Upload */
+      .upload-area { max-width: 100%; }
+      .upload-icon { font-size: 3rem; margin-bottom: 8px; }
+      .upload-title { font-size: 1.15rem; }
+      .upload-sub { font-size: 0.82rem; }
+      .upload-btn, .camera-launch-btn { padding: 11px 24px; font-size: 0.92rem; }
+
+      /* Processing */
+      .processing { max-width: 100%; }
+      .processing-img { width: 160px; height: 160px; }
+
+      /* Results photo */
+      .results-photo-wrap { width: 220px; height: 220px; }
+
+      /* Results cards — beauty full-width top, age+gender row below */
+      .results-cards {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+      }
+      .result-card {
+        min-width: calc(50% - 6px);
+        max-width: calc(50% - 6px);
+        padding: 20px 12px;
+      }
+      .result-card-center {
+        order: -1;
+        min-width: 100%;
+        max-width: 100%;
+        transform: none;
+        box-shadow: 0 4px 20px rgba(251,191,36,0.15) !important;
+      }
+      .result-value { font-size: 2.2rem; }
+      .beauty-ring-wrap { width: 90px; height: 90px; }
+      .beauty-ring-wrap svg { width: 90px; height: 90px; }
+      .beauty-number { font-size: 1.6rem; }
+
+      /* Sub-scores */
+      .sub-score { font-size: 0.74rem; padding: 6px 10px; }
+
+      /* Camera */
+      .camera-screen { max-width: 100%; }
+      .camera-wrap { max-width: 100%; border-radius: 14px; }
+      .tip-bar { font-size: 0.85rem; padding: 10px 14px; }
+      .capture-btn { width: 58px; height: 58px; }
+
+      /* Bottom buttons */
+      .lang-toggle, .api-settings-btn {
+        padding: 7px 12px;
+        font-size: 0.75rem;
+      }
+      .api-settings-btn { left: 80px; }
+
+      /* API panel — full width on mobile */
+      .api-panel {
+        left: 12px;
+        right: 12px;
+        width: auto;
+        bottom: 58px;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .header h1 { font-size: 1.65rem; }
+      .result-card { padding: 16px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<button class="lang-toggle" id="langToggle" onclick="toggleLang()">עברית</button>
+
+<!-- API Settings panel -->
+<div class="api-panel" id="apiPanel">
+  <div class="api-panel-title" id="apiPanelTitle">🔑 Anthropic API Key</div>
+  <div class="api-panel-sub" id="apiPanelSub">Optional — enables Claude AI for higher accuracy</div>
+  <div style="position:relative; display:flex; align-items:center; gap:6px;">
+    <input type="password" id="apiKeyInput" class="api-key-input" style="flex:1" placeholder="sk-ant-..." oninput="onApiKeyInput(event)" />
+    <button onclick="toggleKeyVisibility()" id="eyeBtn" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px;color:#9ca3af;" title="Show/hide key">👁</button>
+  </div>
+  <div style="margin-top:10px;">
+    <div style="font-size:0.75rem;font-weight:700;color:#6b7280;margin-bottom:6px;" id="modelLabel">Model</div>
+    <div style="display:flex;gap:6px;">
+      <button class="model-btn active" id="modelHaiku" onclick="selectModel('haiku')">
+        <span class="model-name">Haiku</span>
+        <span class="model-desc" id="haikuDesc">Fast · Low cost</span>
+      </button>
+      <button class="model-btn" id="modelSonnet" onclick="selectModel('sonnet')">
+        <span class="model-name">Sonnet</span>
+        <span class="model-desc" id="sonnetDesc">Accurate · Slower</span>
+      </button>
+    </div>
+  </div>
+  <span class="ai-mode-tag" id="aiModeTag">✨ AI Mode On</span>
+</div>
+<button class="api-settings-btn" id="apiSettingsBtn" onclick="toggleApiPanel()">⚙ API</button>
+
+<div class="bubbles" id="bubbles"></div>
+
+<div class="container">
+  <div class="header">
+    <h1>AI Face Analyzer</h1>
+    <p>Upload a photo to discover your estimated age, gender & beauty score</p>
+  </div>
+
+  <!-- Upload Screen -->
+  <div class="upload-area glass" id="uploadArea">
+    <div class="upload-icon">📸</div>
+    <div class="upload-title">Drop a photo here</div>
+    <div class="upload-sub">All formats supported — JPG, PNG, HEIC, AVIF, WebP & more</div>
+    <div class="upload-or">── or ──</div>
+    <button class="upload-btn" id="uploadBtn">Choose Photo</button>
+    <input type="file" id="fileInput" accept="image/*" />
+    <button class="camera-launch-btn" id="cameraLaunchBtn" onclick="event.stopPropagation(); openCamera()">📷 <span id="camBtnLabel">Use Camera</span></button>
+  </div>
+
+  <!-- API error banner (non-blocking) -->
+  <div id="apiErrorBanner" style="display:none; width:100%; max-width:600px; background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:10px 16px; font-size:0.85rem; color:#92400e; text-align:center;"></div>
+
+  <!-- Camera Screen -->
+  <div class="camera-screen" id="cameraScreen">
+    <div class="camera-wrap">
+      <video id="cameraVideo" autoplay playsinline muted></video>
+      <canvas id="cameraOverlay"></canvas>
+    </div>
+    <div class="tip-bar" id="tipBar">Position your face inside the oval</div>
+    <div class="camera-controls">
+      <button class="cam-cancel-btn" id="camCancelBtn" onclick="closeCamera()">✕ Cancel</button>
+      <button class="capture-btn" id="captureBtn" onclick="capturePhoto()" title="Capture"></button>
+    </div>
+    <div class="cam-guide-text" id="camGuideText">Look straight at the camera · Good lighting · No sunglasses</div>
+  </div>
+
+  <!-- Processing Screen -->
+  <div class="processing glass" id="processing">
+    <img class="processing-img" id="processingImg" />
+    <div class="processing-steps">
+      <div class="step" id="step1">
+        <div class="step-icon"><div class="spinner" style="display:none"></div><span>1</span></div>
+        <span>Detecting face in photo...</span>
+      </div>
+      <div class="step" id="step2">
+        <div class="step-icon"><div class="spinner" style="display:none"></div><span>2</span></div>
+        <span>Analyzing age & gender (multi-pass)...</span>
+      </div>
+      <div class="step" id="step3">
+        <div class="step-icon"><div class="spinner" style="display:none"></div><span>3</span></div>
+        <span>Computing beauty score (with retries)...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Screen -->
+  <div class="error-msg" id="errorMsg">
+    <div class="error-icon">😕</div>
+    <div class="error-text" id="errorText">No face detected. Please try another photo.</div>
+    <button class="reset-btn" onclick="resetAll()" style="margin-top:16px; color:#f87171; border-color:rgba(248,113,113,0.3)">Try Again</button>
+  </div>
+
+  <!-- Results Screen -->
+  <div class="results" id="results">
+    <div class="results-photo-wrap">
+      <img id="resultPhoto" />
+      <canvas id="resultCanvas"></canvas>
+    </div>
+
+    <div class="results-cards">
+      <!-- Age -->
+      <div class="result-card glass">
+        <div class="result-label">Estimated Age</div>
+        <div class="result-value age-value" id="ageValue">--</div>
+        <div class="result-sub" id="ageRange"></div>
+      </div>
+      <!-- Beauty (center) -->
+      <div class="result-card glass result-card-center">
+        <div class="result-label">Beauty Score</div>
+        <div class="beauty-ring-wrap">
+          <svg viewBox="0 0 110 110">
+            <circle class="ring-bg" cx="55" cy="55" r="46" />
+            <circle class="ring-fill" id="beautyRing" cx="55" cy="55" r="46"
+              stroke-dasharray="289.03" stroke-dashoffset="289.03" stroke="#fbbf24" />
+          </svg>
+          <div class="beauty-number" id="beautyValue">--</div>
+        </div>
+        <div class="result-sub" id="beautyLabel"></div>
+      </div>
+      <!-- Gender -->
+      <div class="result-card glass">
+        <div class="result-label">Gender</div>
+        <div class="gender-icon" id="genderIcon"></div>
+        <div class="result-value gender-value" id="genderValue">--</div>
+        <div class="gender-bar"><div class="gender-fill" id="genderFill"></div></div>
+        <div class="result-sub" id="genderConf"></div>
+      </div>
+    </div>
+
+    <!-- Sub-scores -->
+    <div class="sub-scores" id="subScores"></div>
+
+    <!-- Claude AI strengths -->
+    <div class="ai-strengths" id="aiStrengths"></div>
+
+    <div class="disclaimer">
+      * Score is based on mathematical proportions only (symmetry, golden ratio, rule of thirds) and does not represent true beauty.
+    </div>
+
+    <div style="text-align:center">
+      <button class="reset-btn" onclick="resetAll()">Analyze New Photo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   BUBBLES BACKGROUND
+════════════════════════════════════════ */
+(function() {
+  const colors = ['#f7971e','#ffd200','#4ade80','#7dd3fc','#a78bfa'];
+  const wrap = document.getElementById('bubbles');
+  for (let i = 0; i < 18; i++) {
+    const b = document.createElement('div');
+    b.className = 'bubble';
+    const size = 40 + Math.random() * 120;
+    b.style.cssText = `
+      width:${size}px; height:${size}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      left:${Math.random()*100}%;
+      animation-duration:${8+Math.random()*14}s;
+      animation-delay:${Math.random()*10}s;
+    `;
+    wrap.appendChild(b);
+  }
+})();
+
+/* ════════════════════════════════════════
+   GLOBALS
+════════════════════════════════════════ */
+const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights';
+let modelsLoaded = false;
+let ssdLoaded = false;
+let faceMeshReady = false;
+let faceMesh = null;
+let mediapipeLandmarks = null;
+
+/* ════════════════════════════════════════
+   CLAUDE AI ANALYSIS
+════════════════════════════════════════ */
+function getApiKey() {
+  return document.getElementById('apiKeyInput').value.trim();
+}
+
+let selectedModel = localStorage.getItem('claude_model') || 'sonnet';
+
+function onApiKeyInput(e) {
+  const key = e.target.value.trim();
+  localStorage.setItem('anthropic_key', key);
+  document.getElementById('aiModeTag').style.display = key ? 'inline-block' : 'none';
+  document.getElementById('apiSettingsBtn').classList.toggle('active', !!key);
+}
+
+function toggleKeyVisibility() {
+  const inp = document.getElementById('apiKeyInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function selectModel(model) {
+  selectedModel = model;
+  localStorage.setItem('claude_model', model);
+  document.getElementById('modelHaiku').classList.toggle('active', model === 'haiku');
+  document.getElementById('modelSonnet').classList.toggle('active', model === 'sonnet');
+}
+
+function toggleApiPanel() {
+  const panel = document.getElementById('apiPanel');
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) document.getElementById('apiKeyInput').focus();
+}
+
+// Close panel when clicking outside
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('apiPanel');
+  const btn = document.getElementById('apiSettingsBtn');
+  if (panel.style.display === 'block' && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
+// Convert canvas → JPEG base64, resized to maxSide
+function canvasToBase64(canvas, maxSide = 512) {
+  let w = canvas.width, h = canvas.height;
+  if (Math.max(w, h) > maxSide) {
+    const s = maxSide / Math.max(w, h);
+    w = Math.round(w * s); h = Math.round(h * s);
+  }
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(canvas, 0, 0, w, h);
+  return c.toDataURL('image/jpeg', 0.92).split(',')[1];
+}
+
+// Convert dataUrl → JPEG base64
+function toJpegBase64(dataUrl, maxSide = 512) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (Math.max(w, h) > maxSide) {
+        const s = maxSide / Math.max(w, h);
+        w = Math.round(w * s); h = Math.round(h * s);
+      }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.92).split(',')[1]);
+    };
+    img.src = dataUrl;
+  });
+}
+
+// Validate + sanitise Claude's JSON response
+function validateClaudeResult(result) {
+  if (!result || result._error) return result;
+  const age = parseInt(result.age);
+  if (isNaN(age) || age < 1 || age > 120) return null;
+  result.age = age;
+  if (!['male', 'female'].includes(result.gender)) return null;
+  result.genderConfidence = Math.max(0.5, Math.min(0.99, parseFloat(result.genderConfidence) || 0.8));
+  result.beautyScore = Math.max(1, Math.min(10, parseFloat(result.beautyScore) || 5));
+  if (!Array.isArray(result.strengths)) result.strengths = [];
+  if (typeof result.ageRange !== 'string') result.ageRange = '';
+  return result;
+}
+
+// Single Claude API call
+async function callClaude(base64, prompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': getApiKey(),
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: selectedModel === 'haiku' ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    })
+  });
+
+  const isHe = currentLang === 'he';
+  if (!res.ok) {
+    const status = res.status;
+    let errMsg;
+    if (status === 401) errMsg = isHe ? 'מפתח API שגוי' : 'Invalid API key';
+    else if (status === 429) errMsg = isHe ? 'הגבלת קצב — נסה שוב' : 'Rate limit — try again shortly';
+    else if (status === 400) errMsg = isHe ? 'שגיאת בקשה' : 'Bad request';
+    else errMsg = isHe ? `שגיאת שרת (${status})` : `Server error (${status})`;
+    return { _error: errMsg };
+  }
+
+  const data = await res.json();
+  const text = data.content[0].text.trim();
+  const jsonMatch = text.match(/\{[\s\S]*?\}/);
+  if (!jsonMatch) return null;
+  try { return JSON.parse(jsonMatch[0]); }
+  catch { return null; }
+}
+
+// Main Claude analysis: sends face crop + auto-retry on failure
+async function analyzeWithClaude(dataUrl, faceCanvas) {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+
+  const isHe = currentLang === 'he';
+  const lang = isHe ? 'Hebrew' : 'English';
+
+  // Use face crop when available (removes hair/background/clothing bias)
+  const base64 = faceCanvas
+    ? canvasToBase64(faceCanvas, 640)
+    : await toJpegBase64(dataUrl, 800);
+
+  const prompt = `You are an expert face analyst. This image shows a cropped face. Examine every facial feature carefully.
+
+Respond ONLY with valid JSON, no markdown, no code blocks:
+{"age":<integer>,"ageRange":"<e.g. 28-34>","gender":"<male|female>","genderConfidence":<0.55-0.99>,"beautyScore":<1.0-10.0>,"beautyLabel":"<phrase in ${lang}>","strengths":["<feature in ${lang}>","<feature in ${lang}>","<feature in ${lang}>"]}
+
+AGE: Estimate from skin texture, wrinkles, nasolabial folds, under-eye area, bone prominence. Give integer + realistic range (±3-5 years).
+
+GENDER: Analyze bone structure ONLY — brow ridge, jaw angle/width, cheekbone position, nose bridge, chin shape, orbital depth. Ignore hair and clothing.
+  Male: prominent brow, wide square jaw, wide nose bridge, heavy orbital bones.
+  Female: smooth brow, narrow rounded jaw, soft orbital bones, higher cheekbones.
+  genderConfidence: 0.55-0.65 ambiguous · 0.75-0.90 typical · 0.91-0.99 very clear.
+
+BEAUTY SCORE (be honest and realistic, use the full scale):
+  1-3 below average · 4-5 average · 6-7 above average · 8-9 very attractive · 10 exceptional (rare)
+  Most people score 4-7. Do NOT cluster around 7.
+
+BEAUTY LABEL: short phrase in ${lang} (e.g. "Average" / "Good Looking" / "Attractive" / "Very Attractive" / "Stunning!").
+
+STRENGTHS: 3 specific features you actually see (in ${lang}). Be concrete: "defined jawline", "large eyes", "high cheekbones", "clear skin", "full lips". Never vague like "nice face".`;
+
+  try {
+    // First attempt
+    let result = await callClaude(base64, prompt);
+    result = validateClaudeResult(result);
+
+    // Auto-retry once if result invalid (not an API error)
+    if (!result && !result?._error) {
+      console.log('Claude: retrying...');
+      await new Promise(r => setTimeout(r, 800));
+      result = await callClaude(base64, prompt);
+      result = validateClaudeResult(result);
+    }
+
+    return result;
+  } catch (e) {
+    console.error('Claude API network error:', e);
+    return { _error: currentLang === 'he' ? 'שגיאת רשת — בדוק חיבור' : 'Network error — check connection' };
+  }
+}
+
+/* ════════════════════════════════════════
+   UPLOAD HANDLING
+════════════════════════════════════════ */
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+const uploadBtn = document.getElementById('uploadBtn');
+
+uploadBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  fileInput.click();
+});
+uploadArea.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+// Drag & drop
+uploadArea.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  uploadArea.classList.add('drag-over');
+});
+uploadArea.addEventListener('dragleave', () => {
+  uploadArea.classList.remove('drag-over');
+});
+uploadArea.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  // Accept any image type (including HEIC, AVIF, BMP, GIF, TIFF, etc.)
+  if (!file.type.startsWith('image/') && !file.name.match(/\.(heic|heif|avif|bmp|tiff?|webp|png|jpe?g|gif)$/i)) {
+    showError('File is not an image. Please try an image file (JPG, PNG, HEIC, AVIF, etc.).');
+    uploadArea.style.display = 'block';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => startAnalysis(e.target.result);
+  reader.readAsDataURL(file);
+}
+
+/* ════════════════════════════════════════
+   ANALYSIS PIPELINE
+════════════════════════════════════════ */
+async function startAnalysis(dataUrl) {
+  // Show processing screen
+  uploadArea.style.display = 'none';
+  document.getElementById('errorMsg').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  const proc = document.getElementById('processing');
+  proc.style.display = 'block';
+
+  const img = document.getElementById('processingImg');
+  img.src = dataUrl;
+
+  // Reset steps
+  for (let i = 1; i <= 3; i++) {
+    const s = document.getElementById('step' + i);
+    s.className = 'step';
+    s.querySelector('.spinner').style.display = 'none';
+    s.querySelector('span:last-child') && (s.querySelector('.step-icon span').textContent = i);
+  }
+
+  try {
+    // Step 1: Load models & prepare image
+    activateStep(1);
+    await loadModels();
+
+    const analysisImg = new Image();
+    await new Promise((resolve, reject) => {
+      analysisImg.onload = resolve;
+      analysisImg.onerror = reject;
+      analysisImg.src = dataUrl;
+    });
+
+    // Prepare canvas: min 300px, max 800px on longest side
+    const origW = analysisImg.width, origH = analysisImg.height;
+    let scale = 1;
+    if (Math.max(origW, origH) > 800) scale = 800 / Math.max(origW, origH);
+    if (Math.max(origW, origH) < 300) scale = 300 / Math.max(origW, origH);
+    const canvas = makeCanvas(analysisImg, Math.round(origW * scale), Math.round(origH * scale));
+
+    completeStep(1);
+
+    // Step 2: Age & Gender — Claude AI if key present, else face-api fallback
+    activateStep(2);
+    const detection = await detectFaceRobust(canvas);
+    if (!detection) {
+      showError('No face detected. Try a front-facing photo with clear lighting and no dark sunglasses.');
+      return;
+    }
+    const faceCanvas = cropToFace(canvas, detection.detection.box);
+
+    let age, gender, genderProb, claudeResult = null;
+
+    if (getApiKey()) {
+      const s = currentLang === 'he';
+      document.querySelector('#step2 span:last-child').textContent =
+        s ? 'מנתח עם Claude AI...' : 'Analyzing with Claude AI...';
+      claudeResult = await analyzeWithClaude(dataUrl, faceCanvas);
+    }
+
+    if (claudeResult && claudeResult._error) {
+      // API error — show warning but continue with face-api fallback
+      showApiError(claudeResult._error);
+      claudeResult = null;
+    }
+
+    if (claudeResult) {
+      age = Math.round(claudeResult.age);
+      gender = claudeResult.gender;
+      genderProb = claudeResult.genderConfidence || 0.9;
+    } else {
+      const r = await precisionAnalysis(faceCanvas, detection);
+      age = r.age; gender = r.gender; genderProb = r.genderProb;
+    }
+    completeStep(2);
+
+    // Step 3: Beauty score via MediaPipe (try on full canvas first, then face crop)
+    activateStep(3);
+    let landmarks = await getMediaPipeLandmarks(canvas);
+    if (!landmarks) landmarks = await getMediaPipeLandmarks(faceCanvas);
+    if (!landmarks) landmarks = await getMediaPipeLandmarks(enhanceImage(canvas));
+
+    let beautyResult;
+    if (claudeResult && claudeResult.beautyScore) {
+      // Claude provides the main score; use MediaPipe sub-scores if available
+      const mpSub = landmarks ? computeBeautyScore(landmarks) : null;
+      beautyResult = {
+        total: claudeResult.beautyScore,
+        beautyLabel: claudeResult.beautyLabel,
+        strengths: claudeResult.strengths || [],
+        _ageRange: claudeResult.ageRange || '',
+        symmetry:   mpSub ? mpSub.symmetry   : null,
+        goldenRatio: mpSub ? mpSub.goldenRatio : null,
+        thirds:     mpSub ? mpSub.thirds     : null,
+        jawline:    mpSub ? mpSub.jawline    : null,
+        eyes:       mpSub ? mpSub.eyes       : null,
+      };
+    } else {
+      beautyResult = landmarks
+        ? computeBeautyScore(landmarks)
+        : computeBasicBeautyScore(detection.landmarks);
+      beautyResult.strengths = [];
+    }
+    completeStep(3);
+
+    await new Promise(r => setTimeout(r, 400));
+    showResults(dataUrl, canvas, age, gender, genderProb, beautyResult, landmarks);
+
+  } catch (err) {
+    console.error('Analysis error:', err);
+    showError('Error analyzing the photo. Please try a different image.');
+  }
+}
+
+/* ════════════════════════════════════════
+   STEP ANIMATIONS
+════════════════════════════════════════ */
+function activateStep(n) {
+  const s = document.getElementById('step' + n);
+  s.className = 'step active';
+  s.querySelector('.spinner').style.display = 'block';
+  s.querySelector('.step-icon span').style.display = 'none';
+}
+
+function completeStep(n) {
+  const s = document.getElementById('step' + n);
+  s.className = 'step done';
+  s.querySelector('.spinner').style.display = 'none';
+  const icon = s.querySelector('.step-icon span');
+  icon.style.display = 'inline';
+  icon.textContent = '✓';
+}
+
+/* ════════════════════════════════════════
+   CANVAS HELPERS
+════════════════════════════════════════ */
+function makeCanvas(src, w, h) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(src, 0, 0, w, h);
+  return c;
+}
+
+// Crop canvas to the detected face bounding box with generous padding
+function cropToFace(canvas, box) {
+  const pad = 0.30; // 30% padding around face
+  const x = Math.max(0, Math.floor(box.x - box.width * pad));
+  const y = Math.max(0, Math.floor(box.y - box.height * pad));
+  const w = Math.min(canvas.width - x, Math.ceil(box.width * (1 + pad * 2)));
+  const h = Math.min(canvas.height - y, Math.ceil(box.height * (1 + pad * 2)));
+
+  // Target size: 320px on shortest side (optimal for age/gender models)
+  const targetSize = 320;
+  const shortSide = Math.min(w, h);
+  const s = shortSide < targetSize ? targetSize / shortSide : 1;
+
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * s); c.height = Math.round(h * s);
+  c.getContext('2d').drawImage(canvas, x, y, w, h, 0, 0, c.width, c.height);
+  return c;
+}
+
+/* ════════════════════════════════════════
+   HIGH-ACCURACY MULTI-PASS ANALYSIS
+════════════════════════════════════════ */
+async function precisionAnalysis(faceCanvas, firstDetection) {
+  // Run on 4 variants with different image adjustments to reduce bias
+  const variants = [
+    faceCanvas,
+    enhanceImage(faceCanvas),                        // brighter + contrast
+    (() => {                                          // slightly darker
+      const c = document.createElement('canvas');
+      c.width = faceCanvas.width; c.height = faceCanvas.height;
+      const ctx = c.getContext('2d');
+      ctx.filter = 'brightness(0.85) contrast(1.1)';
+      ctx.drawImage(faceCanvas, 0, 0);
+      return c;
+    })(),
+    (() => {                                          // grayscale — removes skin-tone bias
+      const c = document.createElement('canvas');
+      c.width = faceCanvas.width; c.height = faceCanvas.height;
+      const ctx = c.getContext('2d');
+      ctx.filter = 'grayscale(1) contrast(1.15)';
+      ctx.drawImage(faceCanvas, 0, 0);
+      return c;
+    })(),
+  ];
+
+  const results = [];
+  for (const v of variants) {
+    // Use 416 inputSize for better accuracy (vs 320)
+    let d = await faceapi
+      .detectSingleFace(v, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.2, inputSize: 416 }))
+      .withFaceLandmarks().withAgeAndGender();
+    if (!d && ssdLoaded) {
+      d = await faceapi
+        .detectSingleFace(v, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 }))
+        .withFaceLandmarks().withAgeAndGender();
+    }
+    if (d) results.push(d);
+  }
+
+  // Always include the first detection as a fallback
+  if (!results.length) results.push(firstDetection);
+
+  // Median age (more robust than mean)
+  const ages = results.map(r => r.age).sort((a, b) => a - b);
+  const medianAge = ages[Math.floor(ages.length / 2)];
+
+  // Weighted voting for gender:
+  // Each detection contributes its probability as weight.
+  // male → positive, female → negative.
+  // Final sign determines gender; magnitude = confidence.
+  let genderScore = 0;
+  let totalWeight = 0;
+  for (const r of results) {
+    const w = r.genderProbability;
+    genderScore += r.gender === 'male' ? w : -w;
+    totalWeight += w;
+  }
+
+  const gender = genderScore > 0 ? 'male' : 'female';
+  const genderProb = totalWeight > 0 ? Math.abs(genderScore) / totalWeight : 0.5;
+
+  return {
+    age: Math.round(medianAge),
+    gender,
+    genderProb,
+  };
+}
+
+/* ════════════════════════════════════════
+   ROBUST FACE DETECTION (3-strategy fallback)
+════════════════════════════════════════ */
+async function detectFaceRobust(canvas) {
+  // Strategy 1: TinyFaceDetector — fast, works for clear frontal photos
+  let detection = await faceapi
+    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3, inputSize: 416 }))
+    .withFaceLandmarks()
+    .withAgeAndGender();
+  if (detection) return detection;
+
+  // Strategy 2: Enhanced image (boost brightness/contrast) — helps with dark/low-quality photos
+  const enhanced = enhanceImage(canvas);
+  detection = await faceapi
+    .detectSingleFace(enhanced, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.2, inputSize: 608 }))
+    .withFaceLandmarks()
+    .withAgeAndGender();
+  if (detection) return detection;
+
+  // Strategy 3: SSD MobileNet — slower but better for varied angles, partial faces, small faces
+  if (!ssdLoaded) {
+    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+    ssdLoaded = true;
+  }
+  detection = await faceapi
+    .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
+    .withFaceLandmarks()
+    .withAgeAndGender();
+  if (detection) return detection;
+
+  // Strategy 4: SSD on enhanced image
+  detection = await faceapi
+    .detectSingleFace(enhanced, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 }))
+    .withFaceLandmarks()
+    .withAgeAndGender();
+  return detection || null;
+}
+
+// Boost brightness and contrast to help with dark/low-quality images
+function enhanceImage(srcCanvas) {
+  const c = document.createElement('canvas');
+  c.width = srcCanvas.width;
+  c.height = srcCanvas.height;
+  const ctx = c.getContext('2d');
+  ctx.filter = 'brightness(1.3) contrast(1.2)';
+  ctx.drawImage(srcCanvas, 0, 0);
+  return c;
+}
+
+/* ════════════════════════════════════════
+   MODEL LOADING
+════════════════════════════════════════ */
+async function loadModels() {
+  if (!modelsLoaded) {
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
+    ]);
+    modelsLoaded = true;
+  }
+
+  if (!faceMeshReady) {
+    faceMesh = new FaceMesh({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+    faceMeshReady = true;
+  }
+}
+
+/* ════════════════════════════════════════
+   MEDIAPIPE LANDMARKS (static image)
+════════════════════════════════════════ */
+function getMediaPipeLandmarks(canvas) {
+  return new Promise((resolve) => {
+    let resolved = false;
+    faceMesh.onResults((results) => {
+      if (resolved) return;
+      resolved = true;
+      if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        resolve(results.multiFaceLandmarks[0]);
+      } else {
+        resolve(null);
+      }
+    });
+    // Timeout fallback
+    setTimeout(() => { if (!resolved) { resolved = true; resolve(null); } }, 8000);
+    faceMesh.send({ image: canvas });
+  });
+}
+
+/* ════════════════════════════════════════
+   BEAUTY SCORE ALGORITHM (MediaPipe 468 landmarks)
+════════════════════════════════════════ */
+function dist(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function computeBeautyScore(lm) {
+  // 1. SYMMETRY (30%) — compare 7 left/right landmark pairs
+  const pairs = [
+    [33, 263],   // outer eye corners
+    [133, 362],  // inner eye corners
+    [105, 334],  // eyebrow peaks
+    [129, 358],  // nostrils
+    [61, 291],   // mouth corners
+    [116, 345],  // cheekbones
+    [132, 361],  // jaw
+  ];
+  // Midline from forehead (10) to chin (152)
+  const mid10 = lm[10], mid152 = lm[152];
+  const midX = (mid10.x + mid152.x) / 2;
+
+  let symTotal = 0;
+  for (const [l, r] of pairs) {
+    const dL = Math.abs(lm[l].x - midX);
+    const dR = Math.abs(lm[r].x - midX);
+    const maxD = Math.max(dL, dR, 0.001);
+    symTotal += Math.min(dL, dR) / maxD;
+  }
+  const symRaw = symTotal / pairs.length;
+  // Most people are 0.82-0.98, remap to 1-10
+  const symmetryScore = clamp(1 + (symRaw - 0.75) / 0.23 * 9, 1, 10);
+
+  // 2. GOLDEN RATIO PROPORTIONS (30%)
+  const faceH = dist(lm[10], lm[152]);
+  const faceW = dist(lm[234], lm[454]);
+  const outerEyes = dist(lm[33], lm[263]);
+  const noseW = dist(lm[129], lm[358]);
+  const mouthW = dist(lm[61], lm[291]);
+  const noseLen = dist(lm[168], lm[2]);
+
+  const phi = 1.618;
+  const ratios = [
+    { actual: faceH / Math.max(faceW, 0.001), ideal: phi },
+    { actual: outerEyes / Math.max(faceW, 0.001), ideal: 0.46 },
+    { actual: noseW / Math.max(mouthW, 0.001), ideal: 0.618 },
+    { actual: mouthW / Math.max(faceW, 0.001), ideal: 0.382 },
+    { actual: noseLen / Math.max(faceW, 0.001), ideal: 0.35 },
+  ];
+
+  let ratioTotal = 0;
+  for (const r of ratios) {
+    const dev = Math.abs(r.actual - r.ideal) / r.ideal;
+    ratioTotal += Math.max(0, 1 - dev * 1.5);
+  }
+  const goldenScore = clamp(1 + (ratioTotal / ratios.length) * 9, 1, 10);
+
+  // 3. FACIAL THIRDS BALANCE (20%)
+  const browY = (lm[107].y + lm[336].y) / 2;
+  const noseBaseY = lm[2].y;
+  const topY = lm[10].y;
+  const chinY = lm[152].y;
+
+  const totalH = Math.max(chinY - topY, 0.001);
+  const upper = (browY - topY) / totalH;
+  const middle = (noseBaseY - browY) / totalH;
+  const lower = (chinY - noseBaseY) / totalH;
+  const ideal = 1 / 3;
+
+  const thirdsDeviation = Math.abs(upper - ideal) + Math.abs(middle - ideal) + Math.abs(lower - ideal);
+  // Max deviation = ~0.67, typical 0.05-0.25
+  const thirdsScore = clamp(1 + (1 - thirdsDeviation * 3) * 9, 1, 10);
+
+  // 4. JAWLINE (10%)
+  const jawPairs = [[132, 361], [172, 397], [136, 365], [150, 379]];
+  let jawSym = 0;
+  for (const [l, r] of jawPairs) {
+    const dL = Math.abs(lm[l].x - midX);
+    const dR = Math.abs(lm[r].x - midX);
+    const maxD = Math.max(dL, dR, 0.001);
+    jawSym += Math.min(dL, dR) / maxD;
+  }
+  const jawScore = clamp(1 + (jawSym / jawPairs.length - 0.75) / 0.23 * 9, 1, 10);
+
+  // 5. EYE PROPORTIONS (10%)
+  const leftEyeW = dist(lm[33], lm[133]);
+  const rightEyeW = dist(lm[263], lm[362]);
+  const innerCornerDist = dist(lm[133], lm[362]);
+  const avgEyeW = (leftEyeW + rightEyeW) / 2;
+
+  // Eyes should be ~1 eye-width apart
+  const eyeSpacingRatio = innerCornerDist / Math.max(avgEyeW, 0.001);
+  const eyeSpacingDev = Math.abs(eyeSpacingRatio - 1.0);
+  // Eye width should be ~0.24-0.26 of face width
+  const eyeWidthRatio = avgEyeW / Math.max(faceW, 0.001);
+  const eyeWidthDev = Math.abs(eyeWidthRatio - 0.25);
+
+  const eyeScore = clamp(1 + (1 - (eyeSpacingDev + eyeWidthDev * 4)) * 9, 1, 10);
+
+  // COMPOSITE
+  const composite = symmetryScore * 0.30 + goldenScore * 0.30 + thirdsScore * 0.20 + jawScore * 0.10 + eyeScore * 0.10;
+
+  // Apply sigmoid to center around 5-7
+  const final = 1 + 9 / (1 + Math.exp(-0.7 * (composite - 5)));
+
+  return {
+    total: Math.round(final * 10) / 10,
+    symmetry: Math.round(symmetryScore * 10) / 10,
+    goldenRatio: Math.round(goldenScore * 10) / 10,
+    thirds: Math.round(thirdsScore * 10) / 10,
+    jawline: Math.round(jawScore * 10) / 10,
+    eyes: Math.round(eyeScore * 10) / 10,
+  };
+}
+
+// Fallback beauty score using face-api 68 landmarks
+function computeBasicBeautyScore(landmarks) {
+  const pts = landmarks.positions;
+  // Basic symmetry from 68-point landmarks
+  const noseX = pts[30].x;
+  const pairs68 = [[0, 16], [1, 15], [2, 14], [3, 13], [36, 45], [39, 42]];
+  let sym = 0;
+  for (const [l, r] of pairs68) {
+    const dL = Math.abs(pts[l].x - noseX);
+    const dR = Math.abs(pts[r].x - noseX);
+    sym += Math.min(dL, dR) / Math.max(dL, dR, 0.001);
+  }
+  const score = clamp(3 + (sym / pairs68.length) * 5, 3, 8);
+  return {
+    total: Math.round(score * 10) / 10,
+    symmetry: Math.round(score * 10) / 10,
+    goldenRatio: null, thirds: null, jawline: null, eyes: null
+  };
+}
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+/* ════════════════════════════════════════
+   SHOW RESULTS
+════════════════════════════════════════ */
+function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, mpLandmarks) {
+  document.getElementById('processing').style.display = 'none';
+  const results = document.getElementById('results');
+  results.style.display = 'block';
+
+  // Photo + mesh overlay
+  const photo = document.getElementById('resultPhoto');
+  photo.src = dataUrl;
+
+  if (mpLandmarks) {
+    const rc = document.getElementById('resultCanvas');
+    rc.width = 280;
+    rc.height = 280;
+    const ctx = rc.getContext('2d');
+    ctx.clearRect(0, 0, 280, 280);
+    // Draw subtle mesh
+    drawConnectors(ctx, mpLandmarks, FACEMESH_TESSELATION,
+      { color: 'rgba(170,196,255,0.12)', lineWidth: 0.5 });
+    drawConnectors(ctx, mpLandmarks, FACEMESH_FACE_OVAL,
+      { color: 'rgba(251,191,36,0.35)', lineWidth: 1.5 });
+  }
+
+  // Age — animated count-up
+  const ageEl = document.getElementById('ageValue');
+  animateCount(ageEl, 0, age, 1200);
+  // Age range — use Claude's if available, else ±3
+  const ageRangeText = (beautyResult && beautyResult._ageRange)
+    ? beautyResult._ageRange
+    : `${age - 3} – ${age + 3}`;
+  document.getElementById('ageRange').textContent = ageRangeText;
+
+  // Gender
+  const isMale = gender === 'male';
+  const genderColor = isMale ? '#60a5fa' : '#f472b6';
+  const genderClass = isMale ? 'gender-male' : 'gender-female';
+
+  const genderIconEl = document.getElementById('genderIcon');
+  const genderValueEl = document.getElementById('genderValue');
+  const genderFillEl = document.getElementById('genderFill');
+
+  genderIconEl.textContent = isMale ? '♂' : '♀';
+  genderIconEl.style.color = genderColor;
+
+  genderValueEl.textContent = isMale ? 'Male' : 'Female';
+  genderValueEl.className = 'result-value gender-value ' + genderClass;
+
+  genderFillEl.style.background = isMale
+    ? 'linear-gradient(90deg, #3b82f6, #60a5fa)'
+    : 'linear-gradient(90deg, #ec4899, #f472b6)';
+
+  const pct = Math.round(genderProb * 100);
+  document.getElementById('genderConf').textContent = `${pct}% confidence`;
+  document.getElementById('genderConf').style.color = genderColor;
+  setTimeout(() => { genderFillEl.style.width = pct + '%'; }, 300);
+
+  // Beauty ring
+  const beautyTotal = beauty.total;
+  const ring = document.getElementById('beautyRing');
+  const circumference = 2 * Math.PI * 46;
+  const offset = circumference - (beautyTotal / 10) * circumference;
+
+  // Color based on score
+  let ringColor;
+  if (beautyTotal >= 7.5) ringColor = '#4ade80';
+  else if (beautyTotal >= 5) ringColor = '#fbbf24';
+  else ringColor = '#7dd3fc';
+
+  ring.style.stroke = ringColor;
+  setTimeout(() => {
+    ring.style.strokeDashoffset = offset;
+  }, 300);
+
+  const beautyEl = document.getElementById('beautyValue');
+  beautyEl.style.color = ringColor;
+  animateCount(beautyEl, 0, beautyTotal, 1500, 1);
+
+  // Beauty label — from Claude if available, else computed
+  const beautyLabel = beauty.beautyLabel ||
+    (beautyTotal >= 8.5 ? 'Stunning!' :
+     beautyTotal >= 7   ? 'Very Attractive' :
+     beautyTotal >= 5.5 ? 'Good Looking' :
+     beautyTotal >= 4   ? 'Average' : 'Unique');
+  document.getElementById('beautyLabel').textContent = beautyLabel;
+
+  // Sub-scores (geometric breakdown from MediaPipe)
+  const subEl = document.getElementById('subScores');
+  subEl.innerHTML = '';
+  const s = currentLang === 'he';
+  const subNames = s
+    ? ['סימטריה','יחס הזהב','שלישים','קו לסת','עיניים']
+    : ['Symmetry','Golden Ratio','Facial Thirds','Jawline','Eyes'];
+  const subItems = [
+    { name: subNames[0], val: beauty.symmetry,   color: '#7dd3fc' },
+    { name: subNames[1], val: beauty.goldenRatio, color: '#fbbf24' },
+    { name: subNames[2], val: beauty.thirds,      color: '#4ade80' },
+    { name: subNames[3], val: beauty.jawline,     color: '#c084fc' },
+    { name: subNames[4], val: beauty.eyes,        color: '#f87171' },
+  ];
+  for (const item of subItems) {
+    if (item.val === null) continue;
+    const div = document.createElement('div');
+    div.className = 'sub-score';
+    div.innerHTML = `<span class="sub-dot" style="background:${item.color}"></span>${item.name}: ${item.val}/10`;
+    subEl.appendChild(div);
+  }
+
+  // Claude AI strengths
+  const strengthsWrap = document.getElementById('aiStrengths');
+  strengthsWrap.innerHTML = '';
+  if (beauty.strengths && beauty.strengths.length > 0) {
+    for (const str of beauty.strengths) {
+      const chip = document.createElement('span');
+      chip.className = 'ai-strength-chip';
+      chip.textContent = '✦ ' + str;
+      strengthsWrap.appendChild(chip);
+    }
+  }
+}
+
+/* ════════════════════════════════════════
+   ANIMATED COUNT-UP
+════════════════════════════════════════ */
+function animateCount(el, from, to, duration, decimals = 0) {
+  const start = performance.now();
+  function update(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+    const val = from + (to - from) * eased;
+    el.textContent = val.toFixed(decimals);
+    if (t < 1) requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
+}
+
+/* ════════════════════════════════════════
+   ERROR & RESET
+════════════════════════════════════════ */
+function showError(msg) {
+  document.getElementById('processing').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  const errEl = document.getElementById('errorMsg');
+  document.getElementById('errorText').textContent = msg;
+  errEl.style.display = 'block';
+}
+
+// Show a non-blocking API warning (continues with face-api fallback)
+function showApiError(msg) {
+  const el = document.getElementById('apiErrorBanner');
+  el.textContent = '⚠️ Claude API: ' + msg + (currentLang === 'he' ? ' — ממשיך עם ניתוח רגיל' : ' — falling back to local analysis');
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
+function resetAll() {
+  document.getElementById('processing').style.display = 'none';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('errorMsg').style.display = 'none';
+  uploadArea.style.display = 'block';
+  fileInput.value = '';
+  // Reset beauty ring
+  document.getElementById('beautyRing').style.strokeDashoffset = '289.03';
+  document.getElementById('genderFill').style.width = '0%';
+}
+
+/* ════════════════════════════════════════
+   CAMERA MODE
+════════════════════════════════════════ */
+let cameraStream = null;
+let cameraRafId  = null;
+let faceOk       = false;
+
+async function openCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+  } catch (e) {
+    alert(currentLang === 'he'
+      ? 'לא ניתן לגשת למצלמה. אנא אשר הרשאת מצלמה.'
+      : 'Camera access denied. Please allow camera permission.');
+    return;
+  }
+
+  const video = document.getElementById('cameraVideo');
+  video.srcObject = cameraStream;
+  await video.play();
+
+  uploadArea.style.display = 'none';
+  document.getElementById('cameraScreen').style.display = 'flex';
+
+  // Preload models in background while user positions face
+  loadModels().catch(() => {});
+
+  startCameraGuide();
+}
+
+function closeCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  if (cameraRafId)  { cancelAnimationFrame(cameraRafId); cameraRafId = null; }
+  document.getElementById('cameraScreen').style.display = 'none';
+  uploadArea.style.display = 'block';
+  faceOk = false;
+}
+
+function capturePhoto() {
+  const video = document.getElementById('cameraVideo');
+  const c = document.createElement('canvas');
+  c.width = video.videoWidth; c.height = video.videoHeight;
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width, 0); ctx.scale(-1, 1); // un-mirror
+  ctx.drawImage(video, 0, 0);
+  closeCamera();
+  startAnalysis(c.toDataURL('image/jpeg', 0.95));
+}
+
+/* ── Real-time face guidance ── */
+let lastCheck = 0;
+const CHECK_INTERVAL = 350; // ms between face checks
+
+function startCameraGuide() {
+  const video   = document.getElementById('cameraVideo');
+  const overlay = document.getElementById('cameraOverlay');
+
+  function loop(ts) {
+    cameraRafId = requestAnimationFrame(loop);
+    drawOvalGuide(overlay, video);
+    if (ts - lastCheck > CHECK_INTERVAL) {
+      lastCheck = ts;
+      checkFacePosition(video, overlay);
+    }
+  }
+  cameraRafId = requestAnimationFrame(loop);
+}
+
+function drawOvalGuide(canvas, video) {
+  if (!video.videoWidth) return;
+  canvas.width  = video.clientWidth;
+  canvas.height = video.clientHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const cx = canvas.width / 2;
+  const cy = canvas.height * 0.47;
+  const rx = canvas.width * 0.28;
+  const ry = canvas.height * 0.40;
+
+  // Dim outside oval
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Oval border
+  const color = faceOk ? '#4ade80' : 'rgba(255,255,255,0.5)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Corner tick marks
+  ctx.strokeStyle = faceOk ? '#4ade80' : '#fbbf24';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  const ticks = [[cx-rx, cy], [cx+rx, cy], [cx, cy-ry], [cx, cy+ry]];
+  ticks.forEach(([x, y]) => {
+    const dx = (x - cx) * 0.12, dy = (y - cy) * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(x - dy*1.5, y + dx*1.5);
+    ctx.lineTo(x, y);
+    ctx.lineTo(x + dy*1.5, y - dx*1.5);
+    ctx.stroke();
+  });
+}
+
+async function checkFacePosition(video, overlay) {
+  if (!video.videoWidth || !modelsLoaded) {
+    setTip(currentLang === 'he' ? 'טוען מודלים...' : 'Loading models...', 'warn');
+    return;
+  }
+
+  // Grab current frame into a small canvas for fast detection
+  const snap = document.createElement('canvas');
+  snap.width = 320; snap.height = 240;
+  const ctx = snap.getContext('2d');
+  ctx.translate(snap.width, 0); ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, snap.width, snap.height);
+
+  const det = await faceapi
+    .detectSingleFace(snap, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3, inputSize: 320 }))
+    .withFaceLandmarks();
+
+  const s    = currentLang === 'he';
+  const cw   = overlay.width;
+  const ch   = overlay.height;
+  const ovalCX = cw / 2;
+  const ovalCY = ch * 0.47;
+  const ovalRX = cw * 0.28;
+  const ovalRY = ch * 0.40;
+
+  if (!det) {
+    faceOk = false;
+    document.getElementById('captureBtn').classList.remove('ready');
+    setTip(s ? 'לא זוהה פנים — הסתכל למצלמה' : 'No face detected — look at the camera', 'warn');
+    return;
+  }
+
+  // Map detection box from 320x240 snap to overlay coords
+  const scaleX = cw / 320, scaleY = ch / 240;
+  const box = det.detection.box;
+  const faceCX = (box.x + box.width  / 2) * scaleX;
+  const faceCY = (box.y + box.height / 2) * scaleY;
+  const faceW  = box.width  * scaleX;
+  const faceH  = box.height * scaleY;
+
+  // Ideal face size: face height ~75-100% of oval height
+  const idealH = ovalRY * 1.75;
+  const sizeRatio = faceH / idealH;
+
+  // Offset from oval center
+  const offX = Math.abs(faceCX - ovalCX) / ovalRX;
+  const offY = Math.abs(faceCY - ovalCY) / ovalRY;
+
+  if (sizeRatio < 0.55) {
+    faceOk = false;
+    setTip(s ? '📏 התקרב קצת למצלמה' : '📏 Move a bit closer', 'warn');
+  } else if (sizeRatio > 1.35) {
+    faceOk = false;
+    setTip(s ? '📏 התרחק קצת' : '📏 Move back a little', 'warn');
+  } else if (offX > 0.5) {
+    faceOk = false;
+    setTip(faceCX < ovalCX
+      ? (s ? '← הזז ימינה' : '← Move right')
+      : (s ? '→ הזז שמאלה' : '→ Move left'), 'warn');
+  } else if (offY > 0.5) {
+    faceOk = false;
+    setTip(faceCY < ovalCY
+      ? (s ? '↓ הזז למטה' : '↓ Move down')
+      : (s ? '↑ הזז למעלה' : '↑ Move up'), 'warn');
+  } else {
+    faceOk = true;
+    document.getElementById('captureBtn').classList.add('ready');
+    setTip(s ? '✓ מצוין! לחץ לצילום' : '✓ Perfect! Press to capture', 'ok');
+  }
+}
+
+function setTip(text, type) {
+  const bar = document.getElementById('tipBar');
+  bar.textContent = text;
+  bar.className = 'tip-bar' + (type === 'ok' ? ' tip-ok' : type === 'warn' ? ' tip-warn' : '');
+}
+
+/* ════════════════════════════════════════
+   LANGUAGE TOGGLE
+════════════════════════════════════════ */
+const STRINGS = {
+  en: {
+    title: 'AI Face Analyzer',
+    subtitle: 'Upload a photo to discover your estimated age, gender & beauty score',
+    dropTitle: 'Drop a photo here',
+    dropSub: 'All formats supported — JPG, PNG, HEIC, AVIF, WebP & more',
+    dropOr: '── or ──',
+    chooseBtn: 'Choose Photo',
+    step1: 'Detecting face in photo...',
+    step2: 'Analyzing age & gender (multi-pass)...',
+    step3: 'Computing beauty score (with retries)...',
+    errorDefault: 'No face detected. Please try another photo.',
+    tryAgain: 'Try Again',
+    labelAge: 'Estimated Age',
+    labelGender: 'Gender',
+    labelBeauty: 'Beauty Score',
+    disclaimer: '* Score is based on mathematical proportions only (symmetry, golden ratio, rule of thirds) and does not represent true beauty.',
+    resetBtn: 'Analyze New Photo',
+    male: 'Male', female: 'Female',
+    confidence: '% confidence',
+    beautyLabels: ['Unique','Average','Good Looking','Very Attractive','Stunning!'],
+    subNames: ['Symmetry','Golden Ratio','Facial Thirds','Jawline','Eyes'],
+    camBtn: 'Use Camera',
+    camCancel: '✕ Cancel',
+    camGuide: 'Look straight at the camera · Good lighting · No sunglasses',
+    langBtn: 'עברית',
+    apiKeyLabel: '🔑 Anthropic API Key',
+    apiOptional: '(optional — enables Claude AI for higher accuracy)',
+    apiPlaceholder: 'sk-ant-...',
+    modelLabel: 'Model',
+    haikuDesc: 'Fast · Low cost',
+    sonnetDesc: 'Accurate · Slower',
+  },
+  he: {
+    title: 'ניתוח פנים AI',
+    subtitle: 'העלה תמונה וגלה את הגיל, המגדר וציון היופי שלך',
+    dropTitle: 'גרור תמונה לכאן',
+    dropSub: 'כל סוגי התמונות — JPG, PNG, HEIC, AVIF, WebP ועוד',
+    dropOr: '── או ──',
+    chooseBtn: 'בחר תמונה',
+    step1: 'מזהה פנים בתמונה...',
+    step2: 'מנתח גיל ומגדר (ריבוי ניסיונות)...',
+    step3: 'מחשב ציון יופי (עם ניסיונות חוזרים)...',
+    errorDefault: 'לא זוהו פנים בתמונה. נסה תמונה אחרת.',
+    tryAgain: 'נסה שוב',
+    labelAge: 'גיל משוער',
+    labelGender: 'מגדר',
+    labelBeauty: 'ציון יופי',
+    disclaimer: '* הציון מבוסס על פרופורציות מתמטיות בלבד (סימטריה, יחס הזהב, כלל השלישים) ואינו מייצג יופי אמיתי.',
+    resetBtn: 'נתח תמונה חדשה',
+    male: 'זכר', female: 'נקבה',
+    confidence: '% ביטחון',
+    beautyLabels: ['ייחודי','ממוצע','נאה','יפה מאוד','מדהים!'],
+    subNames: ['סימטריה','יחס הזהב','שלישים','קו לסת','עיניים'],
+    camBtn: 'צלם עם מצלמה',
+    camCancel: '✕ ביטול',
+    camGuide: 'הסתכל ישר למצלמה · תאורה טובה · ללא משקפי שמש',
+    langBtn: 'English',
+    apiKeyLabel: '🔑 מפתח Anthropic API',
+    apiOptional: '(אופציונלי — מאפשר Claude AI לדיוק גבוה יותר)',
+    apiPlaceholder: 'sk-ant-...',
+    modelLabel: 'מודל',
+    haikuDesc: 'מהיר · זול',
+    sonnetDesc: 'מדויק · איטי יותר',
+  },
+};
+
+let currentLang = 'en';
+
+// Restore saved API key + model on load
+(function() {
+  const saved = localStorage.getItem('anthropic_key') || '';
+  if (saved) {
+    document.getElementById('apiKeyInput').value = saved;
+    document.getElementById('aiModeTag').style.display = 'inline-block';
+    document.getElementById('apiSettingsBtn').classList.add('active');
+  }
+  // Restore model selection
+  selectModel(selectedModel);
+})();
+
+function toggleLang() {
+  currentLang = currentLang === 'en' ? 'he' : 'en';
+  applyLang(currentLang);
+}
+
+function applyLang(lang) {
+  const s = STRINGS[lang];
+  const html = document.documentElement;
+  html.lang = lang === 'he' ? 'he' : 'en';
+  html.dir  = lang === 'he' ? 'rtl' : 'ltr';
+
+  document.title = s.title;
+  document.querySelector('.header h1').textContent = s.title;
+  document.querySelector('.header p').textContent  = s.subtitle;
+  document.querySelector('.upload-title').textContent = s.dropTitle;
+  document.querySelector('.upload-sub').textContent   = s.dropSub;
+  document.querySelector('.upload-or').textContent    = s.dropOr;
+  document.getElementById('uploadBtn').textContent    = s.chooseBtn;
+
+  document.querySelector('#step1 span:last-child').textContent = s.step1;
+  document.querySelector('#step2 span:last-child').textContent = s.step2;
+  document.querySelector('#step3 span:last-child').textContent = s.step3;
+
+  document.querySelector('.error-text').textContent = s.errorDefault;
+  document.querySelector('.error-msg .reset-btn').textContent = s.tryAgain;
+
+  document.querySelectorAll('.result-label')[0].textContent = s.labelAge;
+  document.querySelectorAll('.result-label')[1].textContent = s.labelBeauty;
+  document.querySelectorAll('.result-label')[2].textContent = s.labelGender;
+
+  document.querySelector('.disclaimer').textContent = s.disclaimer;
+  document.querySelector('.results > div:last-child .reset-btn').textContent = s.resetBtn;
+
+  document.getElementById('langToggle').textContent  = s.langBtn;
+  document.getElementById('camBtnLabel').textContent  = s.camBtn;
+  document.getElementById('camCancelBtn').textContent = s.camCancel;
+  document.getElementById('camGuideText').textContent = s.camGuide;
+  document.getElementById('apiPanelTitle').textContent = s.apiKeyLabel;
+  document.getElementById('apiPanelSub').textContent   = s.apiOptional;
+  document.getElementById('apiKeyInput').placeholder   = s.apiPlaceholder;
+  document.getElementById('modelLabel').textContent    = s.modelLabel;
+  document.getElementById('haikuDesc').textContent     = s.haikuDesc;
+  document.getElementById('sonnetDesc').textContent    = s.sonnetDesc;
+}
+</script>
+</body>
+</html>

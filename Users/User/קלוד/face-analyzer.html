@@ -18,16 +18,35 @@
 
     body {
       font-family: 'Heebo', sans-serif;
-      background: #f4f6fb;
+      background: linear-gradient(135deg, #0f0c29, #1a1a3e, #24243e);
       min-height: 100vh;
-      color: #1a1a2e;
+      color: #e8eaf6;
       display: flex;
       flex-direction: column;
       align-items: center;
       overflow-x: hidden;
     }
 
-    /* bubbles hidden */
+    /* Animated floating orbs */
+    .bg-orbs {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.3;
+      animation: orbFloat 12s ease-in-out infinite;
+    }
+    .bg-orb:nth-child(1) { width: 400px; height: 400px; background: #f59e0b; top: -10%; left: -10%; animation-duration: 14s; }
+    .bg-orb:nth-child(2) { width: 350px; height: 350px; background: #6366f1; bottom: -10%; right: -10%; animation-duration: 18s; animation-delay: 2s; }
+    .bg-orb:nth-child(3) { width: 300px; height: 300px; background: #ec4899; top: 50%; left: 60%; animation-duration: 16s; animation-delay: 4s; }
+    @keyframes orbFloat {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -40px) scale(1.05); }
+      66% { transform: translate(-20px, 30px) scale(0.95); }
+    }
+
     .bubbles { display: none; }
 
     /* ── Container ── */
@@ -59,15 +78,16 @@
       0%   { background-position: 200% center; }
       100% { background-position: -200% center; }
     }
-    .header p { font-size: 1.1rem; color: #6b7280; margin-top: 8px; }
+    .header p { font-size: 1.1rem; color: rgba(255,255,255,0.5); margin-top: 8px; }
 
-    /* ── Card (replaces glass) ── */
+    /* ── Card ── */
     .glass {
-      background: #fff;
-      border: 1px solid #e5e7eb;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 24px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
       padding: 32px;
+      backdrop-filter: blur(12px);
     }
 
     /* ── Upload area ── */
@@ -77,11 +97,11 @@
       text-align: center;
       cursor: pointer;
       transition: all 0.3s;
-      border: 2px dashed #d1d5db;
+      border: 2px dashed rgba(255,255,255,0.2);
     }
     .upload-area:hover, .upload-area.drag-over {
       border-color: #f59e0b;
-      background: #fffbeb;
+      background: rgba(245,158,11,0.08);
       transform: translateY(-2px);
     }
     .upload-icon {
@@ -92,11 +112,11 @@
       font-size: 1.4rem;
       font-weight: 700;
       margin-bottom: 8px;
-      color: #111827;
+      color: #fff;
     }
-    .upload-sub { color: #6b7280; font-size: 0.92rem; margin-bottom: 16px; }
+    .upload-sub { color: rgba(255,255,255,0.45); font-size: 0.92rem; margin-bottom: 16px; }
     .upload-or {
-      color: #9ca3af;
+      color: rgba(255,255,255,0.25);
       margin: 12px 0;
       font-size: 0.85rem;
     }
@@ -125,7 +145,7 @@
       height: 220px;
       border-radius: 50%;
       object-fit: cover;
-      border: 3px solid #e5e7eb;
+      border: 3px solid rgba(255,255,255,0.15);
       margin-bottom: 24px;
     }
     .processing-steps { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
@@ -134,11 +154,11 @@
       align-items: center;
       gap: 12px;
       font-size: 1rem;
-      color: #d1d5db;
+      color: rgba(255,255,255,0.3);
       transition: color 0.4s;
     }
-    .step.active { color: #f59e0b; }
-    .step.done { color: #10b981; }
+    .step.active { color: #fbbf24; }
+    .step.done { color: #4ade80; }
     .step-icon {
       width: 28px;
       height: 28px;
@@ -147,12 +167,12 @@
       align-items: center;
       justify-content: center;
       font-size: 0.85rem;
-      background: #f3f4f6;
+      background: rgba(255,255,255,0.08);
       flex-shrink: 0;
       transition: background 0.4s;
     }
-    .step.active .step-icon { background: #fef3c7; }
-    .step.done .step-icon { background: #d1fae5; }
+    .step.active .step-icon { background: rgba(251,191,36,0.2); }
+    .step.done .step-icon { background: rgba(74,222,128,0.2); }
 
     @keyframes spin {
       to { transform: rotate(360deg); }
@@ -175,7 +195,8 @@
       margin: 0 auto 28px;
       border-radius: 20px;
       overflow: hidden;
-      border: 2px solid #e5e7eb;
+      border: 2px solid rgba(255,255,255,0.15);
+      box-shadow: 0 0 40px rgba(245,158,11,0.15);
     }
     .results-photo-wrap img, .results-photo-wrap canvas {
       position: absolute;
@@ -205,8 +226,8 @@
     .result-card:nth-child(2) { animation-delay: 0.3s; }
     .result-card:nth-child(3) { animation-delay: 0.5s; }
     .result-card-center {
-      /* same size as other cards, just subtle gold accent */
-      border-color: #fde68a !important;
+      border-color: rgba(251,191,36,0.3) !important;
+      box-shadow: 0 0 30px rgba(251,191,36,0.1) !important;
     }
 
     @keyframes cardIn {
@@ -215,7 +236,7 @@
 
     .result-label {
       font-size: 0.8rem;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.45);
       margin-bottom: 8px;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -227,21 +248,21 @@
     }
     .result-sub {
       font-size: 0.85rem;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.4);
       margin-top: 6px;
     }
 
     /* Age color */
-    .age-value { color: #0ea5e9; }
+    .age-value { color: #7dd3fc; }
     /* Gender color */
-    .gender-value { color: #8b5cf6; }
-    .gender-male   { color: #3b82f6 !important; }
-    .gender-female { color: #ec4899 !important; }
+    .gender-value { color: #c084fc; }
+    .gender-male   { color: #60a5fa !important; }
+    .gender-female { color: #f472b6 !important; }
     .gender-icon { font-size: 2.2rem; margin-bottom: 4px; }
     .gender-bar {
       width: 100%;
       height: 6px;
-      background: #e5e7eb;
+      background: rgba(255,255,255,0.1);
       border-radius: 3px;
       margin-top: 10px;
       overflow: hidden;
@@ -266,7 +287,7 @@
       width: 110px;
       height: 110px;
     }
-    .ring-bg { fill: none; stroke: #e5e7eb; stroke-width: 8; }
+    .ring-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 8; }
     .ring-fill {
       fill: none;
       stroke-width: 8;
@@ -292,12 +313,12 @@
       margin-top: 16px;
     }
     .sub-score {
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 12px;
       padding: 8px 14px;
       font-size: 0.78rem;
-      color: #374151;
+      color: rgba(255,255,255,0.7);
       display: flex;
       align-items: center;
       gap: 6px;
@@ -312,16 +333,16 @@
     .disclaimer {
       text-align: center;
       font-size: 0.78rem;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.25);
       margin-top: 20px;
       max-width: 500px;
     }
 
     /* Reset button */
     .reset-btn {
-      background: #f3f4f6;
-      border: 1px solid #d1d5db;
-      color: #374151;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
       border-radius: 50px;
       padding: 12px 32px;
       font-size: 1rem;
@@ -332,25 +353,24 @@
       transition: all 0.2s;
     }
     .reset-btn:hover {
-      background: #e5e7eb;
+      background: rgba(255,255,255,0.14);
       transform: translateY(-1px);
     }
 
     /* Error */
     .error-msg {
       display: none;
-      background: #fef2f2;
-      border: 1px solid #fca5a5;
+      background: rgba(248,113,113,0.12);
+      border: 1px solid rgba(248,113,113,0.3);
       border-radius: 16px;
       padding: 20px;
       text-align: center;
-      color: #dc2626;
+      color: #f87171;
       max-width: 520px;
       width: 100%;
     }
     .error-msg .error-icon { font-size: 2.5rem; margin-bottom: 8px; }
     .error-msg .error-text { font-size: 1rem; }
-
 
     /* Camera screen */
     .camera-screen {
@@ -367,7 +387,7 @@
       max-width: 420px;
       border-radius: 20px;
       overflow: hidden;
-      border: 2px solid #d1d5db;
+      border: 2px solid rgba(255,255,255,0.12);
       background: #000;
       aspect-ratio: 4/3;
     }
@@ -375,7 +395,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transform: scaleX(-1); /* mirror */
+      transform: scaleX(-1);
       display: block;
     }
     #cameraOverlay {
@@ -393,9 +413,9 @@
       font-size: 0.95rem;
       font-weight: 700;
       transition: background 0.3s, color 0.3s;
-      background: #f3f4f6;
-      color: #6b7280;
-      border: 1px solid #e5e7eb;
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
     }
     .tip-bar.tip-ok {
       background: rgba(74,222,128,0.15);
@@ -433,9 +453,9 @@
     .capture-btn.ready::after { background: #4ade80; }
     .capture-btn:hover { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(255,255,255,0.1); }
     .cam-cancel-btn {
-      background: #f3f4f6;
-      border: 1px solid #d1d5db;
-      color: #374151;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.6);
       border-radius: 50px;
       padding: 10px 22px;
       font-size: 0.9rem;
@@ -443,18 +463,18 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .cam-cancel-btn:hover { background: #e5e7eb; }
+    .cam-cancel-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
     .cam-guide-text {
       font-size: 0.78rem;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.3);
       text-align: center;
     }
 
     /* Camera button in upload area */
     .camera-launch-btn {
-      background: #f3f4f6;
-      border: 1px solid #d1d5db;
-      color: #374151;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
       border-radius: 50px;
       padding: 10px 24px;
       font-size: 0.9rem;
@@ -464,7 +484,7 @@
       margin-top: 8px;
       transition: all 0.2s;
     }
-    .camera-launch-btn:hover { background: #e5e7eb; }
+    .camera-launch-btn:hover { background: rgba(255,255,255,0.13); color: #fff; }
 
     /* Lang toggle */
     .lang-toggle {
@@ -472,9 +492,9 @@
       bottom: 16px;
       left: 16px;
       z-index: 10;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      color: #9ca3af;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.4);
       border-radius: 12px;
       padding: 5px 10px;
       font-size: 0.72rem;
@@ -482,41 +502,28 @@
       cursor: pointer;
       letter-spacing: 0.5px;
       transition: all 0.2s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      backdrop-filter: blur(6px);
     }
-    .lang-toggle:hover { color: #374151; border-color: #d1d5db; }
+    .lang-toggle:hover { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.25); }
 
-    /* ── Claude AI banner in upload area ── */
+    /* ── Powered by Claude AI badge ── */
     .claude-ai-banner {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
       margin-top: 18px;
-      padding: 10px 18px;
-      background: linear-gradient(135deg, #fffbeb, #fef3c7);
-      border: 1px solid #fcd34d;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-decoration: none;
+      padding: 12px 20px;
+      background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(251,191,36,0.08));
+      border: 1px solid rgba(251,191,36,0.3);
+      border-radius: 14px;
+      cursor: default;
+      transition: all 0.3s;
     }
-    .claude-ai-banner:hover {
-      background: linear-gradient(135deg, #fef3c7, #fde68a);
-      border-color: #f59e0b;
-      transform: translateY(-1px);
-    }
-    .claude-ai-banner-icon { font-size: 1.2rem; }
-    .claude-ai-banner-text { font-size: 0.88rem; font-weight: 700; color: #92400e; }
-    .claude-ai-banner-sub  { font-size: 0.75rem; color: #b45309; }
-    .claude-ai-banner-arrow { font-size: 0.8rem; color: #d97706; margin-left: auto; }
-    .claude-ai-banner.ai-on {
-      background: linear-gradient(135deg, #f7971e, #ffd200);
-      border-color: #f59e0b;
-    }
-    .claude-ai-banner.ai-on .claude-ai-banner-text { color: #1a1a2e; }
-    .claude-ai-banner.ai-on .claude-ai-banner-sub  { color: #374151; }
-    .claude-ai-banner.ai-on .claude-ai-banner-arrow { color: #374151; }
+    .claude-ai-banner-icon { font-size: 1.3rem; }
+    .claude-ai-banner-text { font-size: 0.92rem; font-weight: 700; color: #fbbf24; }
+    .claude-ai-banner-sub  { font-size: 0.75rem; color: rgba(255,255,255,0.4); }
+    .claude-ai-banner-arrow { display: none; }
 
     /* ── API Key settings panel ── */
     .api-settings-btn {
@@ -524,22 +531,22 @@
       bottom: 16px;
       left: 70px;
       z-index: 10;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      color: #9ca3af;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.4);
       border-radius: 12px;
       padding: 5px 10px;
       font-size: 0.72rem;
       font-family: 'Heebo', sans-serif;
       cursor: pointer;
       transition: all 0.2s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      backdrop-filter: blur(6px);
     }
-    .api-settings-btn:hover { color: #374151; border-color: #d1d5db; }
+    .api-settings-btn:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2); }
     .api-settings-btn.active {
-      background: linear-gradient(135deg, #f7971e, #ffd200);
-      border-color: #f59e0b;
-      color: #1a1a2e;
+      background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(251,191,36,0.1));
+      border-color: rgba(251,191,36,0.4);
+      color: #fbbf24;
       font-weight: 700;
     }
     .api-panel {
@@ -547,14 +554,15 @@
       bottom: 52px;
       left: 16px;
       z-index: 20;
-      background: #fff;
-      border: 1px solid #e5e7eb;
+      background: rgba(30,30,60,0.95);
+      border: 1px solid rgba(255,255,255,0.12);
       border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      box-shadow: 0 12px 48px rgba(0,0,0,0.5);
       padding: 16px 18px;
       width: 300px;
       display: none;
       animation: panelIn 0.15s ease;
+      backdrop-filter: blur(20px);
     }
     @keyframes panelIn {
       from { opacity:0; transform: translateY(8px); }
@@ -563,27 +571,27 @@
     .api-panel-title {
       font-size: 0.82rem;
       font-weight: 700;
-      color: #374151;
+      color: #fbbf24;
       margin-bottom: 4px;
     }
     .api-panel-sub {
       font-size: 0.74rem;
-      color: #9ca3af;
+      color: rgba(255,255,255,0.4);
       margin-bottom: 10px;
     }
     .api-key-input {
       width: 100%;
       padding: 9px 12px;
-      border: 1px solid #d1d5db;
+      border: 1px solid rgba(255,255,255,0.12);
       border-radius: 10px;
       font-size: 0.85rem;
       font-family: monospace;
-      color: #374151;
-      background: #f9fafb;
+      color: #e8eaf6;
+      background: rgba(255,255,255,0.06);
       outline: none;
       transition: border-color 0.2s;
     }
-    .api-key-input:focus { border-color: #f59e0b; background: #fff; }
+    .api-key-input:focus { border-color: #fbbf24; background: rgba(255,255,255,0.1); }
     .ai-mode-tag {
       display: inline-block;
       background: linear-gradient(135deg, #f7971e, #ffd200);
@@ -597,10 +605,10 @@
     }
     .model-btn {
       flex: 1;
-      border: 1px solid #e5e7eb;
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 10px;
       padding: 8px 10px;
-      background: #f9fafb;
+      background: rgba(255,255,255,0.04);
       cursor: pointer;
       font-family: 'Heebo', sans-serif;
       text-align: center;
@@ -610,14 +618,14 @@
       gap: 2px;
     }
     .model-btn.active {
-      background: #fffbeb;
-      border-color: #f59e0b;
+      background: rgba(251,191,36,0.12);
+      border-color: rgba(251,191,36,0.4);
     }
-    .model-btn:hover { border-color: #d1d5db; }
-    .model-name { font-size: 0.82rem; font-weight: 700; color: #374151; }
-    .model-desc { font-size: 0.68rem; color: #9ca3af; }
-    .model-btn.active .model-name { color: #92400e; }
-    .model-btn.active .model-desc { color: #b45309; }
+    .model-btn:hover { border-color: rgba(255,255,255,0.2); }
+    .model-name { font-size: 0.82rem; font-weight: 700; color: #e8eaf6; }
+    .model-desc { font-size: 0.68rem; color: rgba(255,255,255,0.4); }
+    .model-btn.active .model-name { color: #fbbf24; }
+    .model-btn.active .model-desc { color: rgba(251,191,36,0.7); }
 
     .ai-strengths {
       margin-top: 14px;
@@ -627,12 +635,12 @@
       justify-content: center;
     }
     .ai-strength-chip {
-      background: linear-gradient(135deg, #fef9c3, #fef3c7);
-      border: 1px solid #fcd34d;
+      background: rgba(251,191,36,0.1);
+      border: 1px solid rgba(251,191,36,0.3);
       border-radius: 20px;
       padding: 5px 14px;
       font-size: 0.8rem;
-      color: #92400e;
+      color: #fbbf24;
       font-weight: 600;
     }
 
@@ -716,12 +724,18 @@
 </head>
 <body>
 
+<div class="bg-orbs">
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+  <div class="bg-orb"></div>
+</div>
+
 <button class="lang-toggle" id="langToggle" onclick="toggleLang()">עברית</button>
 
 <!-- API Settings panel -->
 <div class="api-panel" id="apiPanel">
-  <div class="api-panel-title" id="apiPanelTitle">🔑 Anthropic API Key</div>
-  <div class="api-panel-sub" id="apiPanelSub">Optional — enables Claude AI for higher accuracy</div>
+  <div class="api-panel-title" id="apiPanelTitle">🔑 Personal Anthropic Key</div>
+  <div class="api-panel-sub" id="apiPanelSub">Optional — override with your own Anthropic key</div>
   <div style="position:relative; display:flex; align-items:center; gap:6px;">
     <input type="password" id="apiKeyInput" class="api-key-input" style="flex:1" placeholder="sk-ant-..." oninput="onApiKeyInput(event)" />
     <button onclick="toggleKeyVisibility()" id="eyeBtn" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px;color:#9ca3af;" title="Show/hide key">👁</button>
@@ -761,18 +775,17 @@
     <input type="file" id="fileInput" accept="image/*" />
     <button class="camera-launch-btn" id="cameraLaunchBtn" onclick="event.stopPropagation(); openCamera()">📷 <span id="camBtnLabel">Use Camera</span></button>
 
-    <div class="claude-ai-banner" id="claudeAiBanner" onclick="event.stopPropagation(); toggleApiPanel()">
+    <div class="claude-ai-banner" id="claudeAiBanner">
       <span class="claude-ai-banner-icon">✨</span>
       <div style="text-align:left">
-        <div class="claude-ai-banner-text" id="bannerTitle">Enable Claude AI Mode</div>
-        <div class="claude-ai-banner-sub" id="bannerSub">Connect your Anthropic key for higher accuracy</div>
+        <div class="claude-ai-banner-text" id="bannerTitle">✦ Powered by Gemini 2.5 Flash</div>
+        <div class="claude-ai-banner-sub" id="bannerSub">Advanced vision model · Fast & free</div>
       </div>
-      <span class="claude-ai-banner-arrow">→</span>
     </div>
   </div>
 
   <!-- API error banner (non-blocking) -->
-  <div id="apiErrorBanner" style="display:none; width:100%; max-width:600px; background:#fef3c7; border:1px solid #fcd34d; border-radius:12px; padding:10px 16px; font-size:0.85rem; color:#92400e; text-align:center;"></div>
+  <div id="apiErrorBanner" style="display:none; width:100%; max-width:600px; background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.3); border-radius:12px; padding:10px 16px; font-size:0.85rem; color:#fbbf24; text-align:center;"></div>
 
   <!-- Camera Screen -->
   <div class="camera-screen" id="cameraScreen">
@@ -900,10 +913,22 @@ let faceMesh = null;
 let mediapipeLandmarks = null;
 
 /* ════════════════════════════════════════
-   CLAUDE AI ANALYSIS
+   CLAUDE AI ANALYSIS (via OpenRouter)
 ════════════════════════════════════════ */
+const BUILT_IN_KEY = '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';
+
 function getApiKey() {
+  // Personal Anthropic key overrides built-in OpenRouter key
   return document.getElementById('apiKeyInput').value.trim();
+}
+
+function getEffectiveKey() {
+  // Always returns a key — built-in OpenRouter or personal override
+  return getApiKey() || BUILT_IN_KEY;
+}
+
+function isUsingBuiltInKey() {
+  return !getApiKey();
 }
 
 let selectedModel = localStorage.getItem('claude_model') || 'sonnet';
@@ -913,22 +938,22 @@ function onApiKeyInput(e) {
   localStorage.setItem('anthropic_key', key);
   document.getElementById('aiModeTag').style.display = key ? 'inline-block' : 'none';
   document.getElementById('apiSettingsBtn').classList.toggle('active', !!key);
-  updateAiBanner(!!key);
+  updateAiBanner();
 }
 
-function updateAiBanner(hasKey) {
+function updateAiBanner() {
   const banner = document.getElementById('claudeAiBanner');
   const title  = document.getElementById('bannerTitle');
   const sub    = document.getElementById('bannerSub');
   const isHe   = currentLang === 'he';
-  if (hasKey) {
-    banner.classList.add('ai-on');
-    title.textContent = isHe ? '✦ מצב Claude AI פעיל' : '✦ Claude AI Mode Active';
+  // Always active — powered by built-in AI
+  banner.classList.add('ai-on');
+  if (getApiKey()) {
+    title.textContent = isHe ? '✦ Claude AI פעיל (מפתח אישי)' : '✦ Claude AI Active (Personal Key)';
     sub.textContent   = isHe ? 'ניתוח מדויק עם Sonnet / Haiku' : 'High-accuracy analysis with Sonnet / Haiku';
   } else {
-    banner.classList.remove('ai-on');
-    title.textContent = isHe ? 'הפעל מצב Claude AI' : 'Enable Claude AI Mode';
-    sub.textContent   = isHe ? 'חבר מפתח Anthropic לדיוק גבוה יותר' : 'Connect your Anthropic key for higher accuracy';
+    title.textContent = isHe ? '✦ מופעל על ידי Gemini 2.5 Flash' : '✦ Powered by Gemini 2.5 Flash';
+    sub.textContent   = isHe ? 'מודל ראיית מחשב מתקדם · מהיר וחינמי' : 'Advanced vision model · Fast & free';
   }
 }
 
@@ -1006,52 +1031,99 @@ function validateClaudeResult(result) {
   return result;
 }
 
-// Single Claude API call
+// Single Claude API call — routes through OpenRouter (built-in) or Anthropic (personal key)
 async function callClaude(base64, prompt) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': getApiKey(),
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: selectedModel === 'haiku' ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
-          { type: 'text', text: prompt }
-        ]
-      }]
-    })
-  });
-
+  const personalKey = getApiKey();
   const isHe = currentLang === 'he';
-  if (!res.ok) {
-    const status = res.status;
-    let errMsg;
-    if (status === 401) errMsg = isHe ? 'מפתח API שגוי' : 'Invalid API key';
-    else if (status === 429) errMsg = isHe ? 'הגבלת קצב — נסה שוב' : 'Rate limit — try again shortly';
-    else if (status === 400) errMsg = isHe ? 'שגיאת בקשה' : 'Bad request';
-    else errMsg = isHe ? `שגיאת שרת (${status})` : `Server error (${status})`;
-    return { _error: errMsg };
-  }
 
-  const data = await res.json();
-  const text = data.content[0].text.trim();
-  const jsonMatch = text.match(/\{[\s\S]*?\}/);
-  if (!jsonMatch) return null;
-  try { return JSON.parse(jsonMatch[0]); }
-  catch { return null; }
+  if (personalKey) {
+    // Personal Anthropic key → direct Anthropic API
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': personalKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: selectedModel === 'haiku' ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!res.ok) {
+      const status = res.status;
+      let errMsg;
+      if (status === 401) errMsg = isHe ? 'מפתח API שגוי' : 'Invalid API key';
+      else if (status === 429) errMsg = isHe ? 'הגבלת קצב — נסה שוב' : 'Rate limit — try again shortly';
+      else if (status === 400) errMsg = isHe ? 'שגיאת בקשה' : 'Bad request';
+      else errMsg = isHe ? `שגיאת שרת (${status})` : `Server error (${status})`;
+      return { _error: errMsg };
+    }
+
+    const data = await res.json();
+    const text = data.content[0].text.trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    try { return JSON.parse(jsonMatch[0]); }
+    catch { return null; }
+
+  } else {
+    // Built-in OpenRouter key → Gemini 2.5 Flash (best vision quality, very cheap)
+    const model = 'google/gemini-2.5-flash-preview';
+
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${BUILT_IN_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': window.location.href,
+        'X-Title': 'AI Face Analyzer',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } },
+            { type: 'text', text: prompt }
+          ]
+        }]
+      })
+    });
+
+    if (!res.ok) {
+      const status = res.status;
+      let errMsg;
+      if (status === 401) errMsg = isHe ? 'שגיאת אימות API' : 'API authentication error';
+      else if (status === 429) errMsg = isHe ? 'הגבלת קצב — נסה שוב' : 'Rate limit — try again shortly';
+      else if (status === 402) errMsg = isHe ? 'מכסת API נגמרה' : 'API quota exceeded';
+      else errMsg = isHe ? `שגיאת שרת (${status})` : `Server error (${status})`;
+      return { _error: errMsg };
+    }
+
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content?.trim();
+    if (!text) return null;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    try { return JSON.parse(jsonMatch[0]); }
+    catch { return null; }
+  }
 }
 
 // Main Claude analysis: sends face crop + auto-retry on failure
+// Always available — uses built-in OpenRouter key when no personal key set
 async function analyzeWithClaude(dataUrl, faceCanvas) {
-  const apiKey = getApiKey();
-  if (!apiKey) return null;
 
   const isHe = currentLang === 'he';
   const lang = isHe ? 'Hebrew' : 'English';
@@ -1086,8 +1158,8 @@ STRENGTHS: 3 specific features you actually see (in ${lang}). Be concrete: "defi
     let result = await callClaude(base64, prompt);
     result = validateClaudeResult(result);
 
-    // Auto-retry once if result invalid (not an API error)
-    if (!result && !result?._error) {
+    // Auto-retry once if result is null/invalid (API errors come back as objects, not null)
+    if (!result) {
       console.log('Claude: retrying...');
       await new Promise(r => setTimeout(r, 800));
       result = await callClaude(base64, prompt);
@@ -1198,7 +1270,8 @@ async function startAnalysis(dataUrl) {
 
     let age, gender, genderProb, claudeResult = null;
 
-    if (getApiKey()) {
+    // Always use Claude AI (built-in OpenRouter key or personal Anthropic key)
+    {
       const s = currentLang === 'he';
       document.querySelector('#step2 span:last-child').textContent =
         s ? 'מנתח עם Claude AI...' : 'Analyzing with Claude AI...';
@@ -1695,7 +1768,7 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
   genderIconEl.textContent = isMale ? '♂' : '♀';
   genderIconEl.style.color = genderColor;
 
-  genderValueEl.textContent = isMale ? 'Male' : 'Female';
+  genderValueEl.textContent = isMale ? STRINGS[currentLang].male : STRINGS[currentLang].female;
   genderValueEl.className = 'result-value gender-value ' + genderClass;
 
   genderFillEl.style.background = isMale
@@ -1703,7 +1776,7 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
     : 'linear-gradient(90deg, #ec4899, #f472b6)';
 
   const pct = Math.round(genderProb * 100);
-  document.getElementById('genderConf').textContent = `${pct}% confidence`;
+  document.getElementById('genderConf').textContent = `${pct}${STRINGS[currentLang].confidence}`;
   document.getElementById('genderConf').style.color = genderColor;
   setTimeout(() => { genderFillEl.style.width = pct + '%'; }, 300);
 
@@ -1729,11 +1802,12 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
   animateCount(beautyEl, 0, beautyTotal, 1500, 1);
 
   // Beauty label — from Claude if available, else computed
+  const bLabels = STRINGS[currentLang].beautyLabels;
   const beautyLabel = beauty.beautyLabel ||
-    (beautyTotal >= 8.5 ? 'Stunning!' :
-     beautyTotal >= 7   ? 'Very Attractive' :
-     beautyTotal >= 5.5 ? 'Good Looking' :
-     beautyTotal >= 4   ? 'Average' : 'Unique');
+    (beautyTotal >= 8.5 ? bLabels[4] :
+     beautyTotal >= 7   ? bLabels[3] :
+     beautyTotal >= 5.5 ? bLabels[2] :
+     beautyTotal >= 4   ? bLabels[1] : bLabels[0]);
   document.getElementById('beautyLabel').textContent = beautyLabel;
 
   // Sub-scores (geometric breakdown from MediaPipe)
@@ -2035,8 +2109,8 @@ const STRINGS = {
     camCancel: '✕ Cancel',
     camGuide: 'Look straight at the camera · Good lighting · No sunglasses',
     langBtn: 'עברית',
-    apiKeyLabel: '🔑 Anthropic API Key',
-    apiOptional: '(optional — enables Claude AI for higher accuracy)',
+    apiKeyLabel: '🔑 Personal Anthropic Key',
+    apiOptional: 'Optional — override with your own Anthropic key',
     apiPlaceholder: 'sk-ant-...',
     modelLabel: 'Model',
     haikuDesc: 'Fast · Low cost',
@@ -2067,8 +2141,8 @@ const STRINGS = {
     camCancel: '✕ ביטול',
     camGuide: 'הסתכל ישר למצלמה · תאורה טובה · ללא משקפי שמש',
     langBtn: 'English',
-    apiKeyLabel: '🔑 מפתח Anthropic API',
-    apiOptional: '(אופציונלי — מאפשר Claude AI לדיוק גבוה יותר)',
+    apiKeyLabel: '🔑 מפתח Anthropic אישי',
+    apiOptional: 'אופציונלי — דריסה עם מפתח Anthropic שלך',
     apiPlaceholder: 'sk-ant-...',
     modelLabel: 'מודל',
     haikuDesc: 'מהיר · זול',
@@ -2087,7 +2161,7 @@ let currentLang = 'en';
     document.getElementById('apiSettingsBtn').classList.add('active');
   }
   selectModel(selectedModel);
-  updateAiBanner(!!saved);
+  updateAiBanner();
 })();
 
 function toggleLang() {
@@ -2133,7 +2207,7 @@ function applyLang(lang) {
   document.getElementById('modelLabel').textContent    = s.modelLabel;
   document.getElementById('haikuDesc').textContent     = s.haikuDesc;
   document.getElementById('sonnetDesc').textContent    = s.sonnetDesc;
-  updateAiBanner(!!getApiKey());
+  updateAiBanner();
 }
 </script>
 </body>

@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Face Analyzer</title>
 
+  <!-- Local config (gitignored) — provides OPENROUTER_KEY -->
+  <script src="config.js"></script>
+
   <!-- face-api.js for age & gender -->
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <!-- MediaPipe Face Mesh for beauty score landmarks -->
@@ -786,7 +789,9 @@ let mediapipeLandmarks = null;
 /* ════════════════════════════════════════
    CLAUDE AI ANALYSIS (via OpenRouter)
 ════════════════════════════════════════ */
-const BUILT_IN_KEY = '__OPENROUTER_KEY__';
+// config.js (gitignored) → window.OPENROUTER_KEY for local dev
+// GitHub Actions injects the real key at deploy time via __OPENROUTER_KEY__ placeholder
+const BUILT_IN_KEY = window.OPENROUTER_KEY || '__OPENROUTER_KEY__';
 
 function getApiKey() {
   // Personal Anthropic key overrides built-in OpenRouter key

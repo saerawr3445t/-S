@@ -1067,11 +1067,11 @@ async function startAnalysis(dataUrl) {
       analysisImg.src = dataUrl;
     });
 
-    // Prepare canvas: min 300px, max 800px on longest side
+    // Prepare canvas: min 640px, max 1200px on longest side (larger = better detection)
     const origW = analysisImg.width, origH = analysisImg.height;
     let scale = 1;
-    if (Math.max(origW, origH) > 800) scale = 800 / Math.max(origW, origH);
-    if (Math.max(origW, origH) < 300) scale = 300 / Math.max(origW, origH);
+    if (Math.max(origW, origH) > 1200) scale = 1200 / Math.max(origW, origH);
+    if (Math.max(origW, origH) < 640)  scale = 640  / Math.max(origW, origH);
     const canvas = makeCanvas(analysisImg, Math.round(origW * scale), Math.round(origH * scale));
 
     completeStep(1);
@@ -1272,52 +1272,105 @@ async function precisionAnalysis(faceCanvas, firstDetection) {
 }
 
 /* ════════════════════════════════════════
-   ROBUST FACE DETECTION (3-strategy fallback)
+   ROBUST FACE DETECTION (multi-strategy)
 ════════════════════════════════════════ */
 async function detectFaceRobust(canvas) {
-  // Strategy 1: TinyFaceDetector — fast, works for clear frontal photos
-  let detection = await faceapi
-    .detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3, inputSize: 416 }))
-    .withFaceLandmarks()
-    .withAgeAndGender();
-  if (detection) return detection;
+  // Pre-generate image variants once (cheap)
+  const enhanced   = preprocessCanvas(canvas, 'brightness(1.35) contrast(1.25)');
+  const sharpened  = preprocessCanvas(canvas, 'contrast(1.4) saturate(0.8)');
+  const dark       = preprocessCanvas(canvas, 'brightness(0.75) contrast(1.3)');
+  const normalized = normalizeCanvas(canvas); // histogram stretch
 
-  // Strategy 2: Enhanced image (boost brightness/contrast) — helps with dark/low-quality photos
-  const enhanced = enhanceImage(canvas);
-  detection = await faceapi
-    .detectSingleFace(enhanced, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.2, inputSize: 608 }))
-    .withFaceLandmarks()
-    .withAgeAndGender();
-  if (detection) return detection;
+  // ── Tiny Face Detector passes (fast) ──────────────────────────────
+  const tinyConfigs = [
+    { canvas: canvas,      threshold: 0.30, size: 416 },
+    { canvas: enhanced,    threshold: 0.20, size: 608 },
+    { canvas: sharpened,   threshold: 0.20, size: 416 },
+    { canvas: normalized,  threshold: 0.20, size: 608 },
+    { canvas: dark,        threshold: 0.15, size: 608 },
+    { canvas: canvas,      threshold: 0.10, size: 608 }, // last-resort low threshold
+  ];
 
-  // Strategy 3: SSD MobileNet — slower but better for varied angles, partial faces, small faces
+  for (const cfg of tinyConfigs) {
+    const d = await faceapi
+      .detectSingleFace(cfg.canvas, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: cfg.threshold, inputSize: cfg.size }))
+      .withFaceLandmarks().withAgeAndGender();
+    if (d) return d;
+  }
+
+  // ── SSD MobileNet (slower, handles angles & partial faces) ────────
   if (!ssdLoaded) {
-    await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+    try {
+      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+    } catch {
+      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL_FALLBACK);
+    }
     ssdLoaded = true;
   }
-  detection = await faceapi
-    .detectSingleFace(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
-    .withFaceLandmarks()
-    .withAgeAndGender();
-  if (detection) return detection;
 
-  // Strategy 4: SSD on enhanced image
-  detection = await faceapi
-    .detectSingleFace(enhanced, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 }))
-    .withFaceLandmarks()
-    .withAgeAndGender();
-  return detection || null;
+  const ssdConfigs = [
+    { canvas: canvas,     conf: 0.20 },
+    { canvas: enhanced,   conf: 0.15 },
+    { canvas: normalized, conf: 0.15 },
+    { canvas: sharpened,  conf: 0.10 },
+  ];
+
+  for (const cfg of ssdConfigs) {
+    const d = await faceapi
+      .detectSingleFace(cfg.canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: cfg.conf }))
+      .withFaceLandmarks().withAgeAndGender();
+    if (d) return d;
+  }
+
+  // ── Last resort: detectAllFaces and pick highest-score result ─────
+  const allFaces = await faceapi
+    .detectAllFaces(enhanced, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.05 }))
+    .withFaceLandmarks().withAgeAndGender();
+  if (allFaces && allFaces.length > 0) {
+    return allFaces.sort((a, b) => b.detection.score - a.detection.score)[0];
+  }
+
+  return null;
 }
 
-// Boost brightness and contrast to help with dark/low-quality images
-function enhanceImage(srcCanvas) {
+// Apply a CSS filter to a canvas and return a new canvas
+function preprocessCanvas(src, filter) {
   const c = document.createElement('canvas');
-  c.width = srcCanvas.width;
-  c.height = srcCanvas.height;
+  c.width = src.width; c.height = src.height;
   const ctx = c.getContext('2d');
-  ctx.filter = 'brightness(1.3) contrast(1.2)';
-  ctx.drawImage(srcCanvas, 0, 0);
+  ctx.filter = filter;
+  ctx.drawImage(src, 0, 0);
   return c;
+}
+
+// Stretch pixel values to full 0-255 range (improves low-contrast photos)
+function normalizeCanvas(src) {
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(src, 0, 0);
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  let min = 255, max = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (d[i] + d[i+1] + d[i+2]) / 3;
+    if (v < min) min = v;
+    if (v > max) max = v;
+  }
+  const range = Math.max(max - min, 1);
+  const scale = 255 / range;
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]   = Math.min(255, (d[i]   - min) * scale);
+    d[i+1] = Math.min(255, (d[i+1] - min) * scale);
+    d[i+2] = Math.min(255, (d[i+2] - min) * scale);
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+// Legacy alias used elsewhere
+function enhanceImage(srcCanvas) {
+  return preprocessCanvas(srcCanvas, 'brightness(1.3) contrast(1.2)');
 }
 
 /* ════════════════════════════════════════

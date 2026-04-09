@@ -489,25 +489,6 @@
     }
     .camera-launch-btn:hover { background: rgba(255,255,255,0.13); color: #fff; }
 
-    /* Lang toggle */
-    .lang-toggle {
-      position: fixed;
-      bottom: 16px;
-      left: 16px;
-      z-index: 10;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.4);
-      border-radius: 12px;
-      padding: 5px 10px;
-      font-size: 0.72rem;
-      font-family: 'Heebo', sans-serif;
-      cursor: pointer;
-      letter-spacing: 0.5px;
-      transition: all 0.2s;
-      backdrop-filter: blur(6px);
-    }
-    .lang-toggle:hover { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.25); }
 
     /* ── Powered by Claude AI badge ── */
     .claude-ai-banner {
@@ -602,11 +583,6 @@
       .tip-bar { font-size: 0.85rem; padding: 10px 14px; }
       .capture-btn { width: 58px; height: 58px; }
 
-      /* Bottom buttons */
-      .lang-toggle {
-        padding: 7px 12px;
-        font-size: 0.75rem;
-      }
     }
 
     @media (max-width: 380px) {
@@ -622,8 +598,6 @@
   <div class="bg-orb"></div>
   <div class="bg-orb"></div>
 </div>
-
-<button class="lang-toggle" id="langToggle" onclick="toggleLang()">עברית</button>
 
 <!-- Hidden API key input (kept for code compatibility) -->
 <input type="hidden" id="apiKeyInput" value="" />
@@ -814,15 +788,14 @@ function updateAiBanner() {
   const banner = document.getElementById('claudeAiBanner');
   const title  = document.getElementById('bannerTitle');
   const sub    = document.getElementById('bannerSub');
-  const isHe   = currentLang === 'he';
   // Always active — powered by built-in AI
   banner.classList.add('ai-on');
   if (getApiKey()) {
-    title.textContent = isHe ? '✦ Claude AI פעיל (מפתח אישי)' : '✦ Claude AI Active (Personal Key)';
-    sub.textContent   = isHe ? 'ניתוח מדויק עם Sonnet / Haiku' : 'High-accuracy analysis with Sonnet / Haiku';
+    title.textContent = '✦ Claude AI Active (Personal Key)';
+    sub.textContent   = 'High-accuracy analysis with Sonnet / Haiku';
   } else {
-    title.textContent = isHe ? '✦ מופעל על ידי Qwen2.5-VL' : '✦ Powered by Qwen2.5-VL';
-    sub.textContent   = isHe ? 'מודל ראיית מחשב מתמחה לניתוח פנים' : 'Specialized vision model for face analysis';
+    title.textContent = '✦ Powered by Qwen2.5-VL';
+    sub.textContent   = 'Specialized vision model for face analysis';
   }
 }
 
@@ -880,7 +853,6 @@ function validateClaudeResult(result) {
 // Single Claude API call — routes through OpenRouter (built-in) or Anthropic (personal key)
 async function callClaude(base64, prompt) {
   const personalKey = getApiKey();
-  const isHe = currentLang === 'he';
 
   if (personalKey) {
     // Personal Anthropic key → direct Anthropic API
@@ -908,10 +880,10 @@ async function callClaude(base64, prompt) {
     if (!res.ok) {
       const status = res.status;
       let errMsg;
-      if (status === 401) errMsg = isHe ? 'מפתח API שגוי' : 'Invalid API key';
-      else if (status === 429) errMsg = isHe ? 'הגבלת קצב — נסה שוב' : 'Rate limit — try again shortly';
-      else if (status === 400) errMsg = isHe ? 'שגיאת בקשה' : 'Bad request';
-      else errMsg = isHe ? `שגיאת שרת (${status})` : `Server error (${status})`;
+      if (status === 401) errMsg = 'Invalid API key';
+      else if (status === 429) errMsg = 'Rate limit — try again shortly';
+      else if (status === 400) errMsg = 'Bad request';
+      else errMsg = `Server error (${status})`;
       return { _error: errMsg };
     }
 
@@ -950,10 +922,10 @@ async function callClaude(base64, prompt) {
     if (!res.ok) {
       const status = res.status;
       let errMsg;
-      if (status === 401) errMsg = isHe ? 'שגיאת אימות API' : 'API authentication error';
-      else if (status === 429) errMsg = isHe ? 'הגבלת קצב — נסה שוב' : 'Rate limit — try again shortly';
-      else if (status === 402) errMsg = isHe ? 'מכסת API נגמרה' : 'API quota exceeded';
-      else errMsg = isHe ? `שגיאת שרת (${status})` : `Server error (${status})`;
+      if (status === 401) errMsg = 'API authentication error';
+      else if (status === 429) errMsg = 'Rate limit — try again shortly';
+      else if (status === 402) errMsg = 'API quota exceeded';
+      else errMsg = `Server error (${status})`;
       return { _error: errMsg };
     }
 
@@ -971,8 +943,7 @@ async function callClaude(base64, prompt) {
 // Always available — uses built-in OpenRouter key when no personal key set
 async function analyzeWithClaude(dataUrl, faceCanvas) {
 
-  const isHe = currentLang === 'he';
-  const lang = isHe ? 'Hebrew' : 'English';
+  const lang = 'English';
 
   // Use face crop when available (removes hair/background/clothing bias)
   const base64 = faceCanvas
@@ -1015,7 +986,7 @@ STRENGTHS: 3 specific features you actually see (in ${lang}). Be concrete: "defi
     return result;
   } catch (e) {
     console.error('Claude API network error:', e);
-    return { _error: currentLang === 'he' ? 'שגיאת רשת — בדוק חיבור' : 'Network error — check connection' };
+    return { _error: 'Network error — check connection' };
   }
 }
 
@@ -1117,12 +1088,8 @@ async function startAnalysis(dataUrl) {
     let age, gender, genderProb, claudeResult = null;
 
     // Always use Claude AI (built-in OpenRouter key or personal Anthropic key)
-    {
-      const s = currentLang === 'he';
-      document.querySelector('#step2 span:last-child').textContent =
-        s ? 'מנתח עם Claude AI...' : 'Analyzing with Claude AI...';
-      claudeResult = await analyzeWithClaude(dataUrl, faceCanvas);
-    }
+    document.querySelector('#step2 span:last-child').textContent = 'Analyzing with AI...';
+    claudeResult = await analyzeWithClaude(dataUrl, faceCanvas);
 
     if (claudeResult && claudeResult._error) {
       // API error — show warning but continue with face-api fallback
@@ -1174,21 +1141,14 @@ async function startAnalysis(dataUrl) {
 
   } catch (err) {
     console.error('Analysis error:', err);
-    const isHe = currentLang === 'he';
     let msg;
     const e = err?.message || '';
     if (e.includes('Failed to fetch') || e.includes('NetworkError') || e.includes('Load failed')) {
-      msg = isHe
-        ? 'שגיאת רשת — לא ניתן לטעון מודלי AI. בדוק חיבור לאינטרנט.'
-        : 'Network error — could not load AI models. Check your internet connection.';
+      msg = 'Network error — could not load AI models. Check your internet connection.';
     } else if (e.includes('faceapi') || e.includes('model')) {
-      msg = isHe
-        ? 'שגיאה בטעינת מודלים — נסה לרענן את הדף.'
-        : 'Model loading error — try refreshing the page.';
+      msg = 'Model loading error — try refreshing the page.';
     } else {
-      msg = isHe
-        ? 'שגיאה בניתוח התמונה. נסה תמונה אחרת.'
-        : 'Error analyzing the photo. Please try a different image.';
+      msg = 'Error analyzing the photo. Please try a different image.';
     }
     showError(msg);
   }
@@ -1614,7 +1574,7 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
   genderIconEl.textContent = isMale ? '♂' : '♀';
   genderIconEl.style.color = genderColor;
 
-  genderValueEl.textContent = isMale ? STRINGS[currentLang].male : STRINGS[currentLang].female;
+  genderValueEl.textContent = isMale ? 'Male' : 'Female';
   genderValueEl.className = 'result-value gender-value ' + genderClass;
 
   genderFillEl.style.background = isMale
@@ -1622,7 +1582,7 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
     : 'linear-gradient(90deg, #ec4899, #f472b6)';
 
   const pct = Math.round(genderProb * 100);
-  document.getElementById('genderConf').textContent = `${pct}${STRINGS[currentLang].confidence}`;
+  document.getElementById('genderConf').textContent = `${pct}% confidence`;
   document.getElementById('genderConf').style.color = genderColor;
   setTimeout(() => { genderFillEl.style.width = pct + '%'; }, 300);
 
@@ -1648,7 +1608,7 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
   animateCount(beautyEl, 0, beautyTotal, 1500, 1);
 
   // Beauty label — from Claude if available, else computed
-  const bLabels = STRINGS[currentLang].beautyLabels;
+  const bLabels = ['Unique','Average','Good Looking','Very Attractive','Stunning!'];
   const beautyLabel = beauty.beautyLabel ||
     (beautyTotal >= 8.5 ? bLabels[4] :
      beautyTotal >= 7   ? bLabels[3] :
@@ -1659,10 +1619,7 @@ function showResults(dataUrl, analysisCanvas, age, gender, genderProb, beauty, m
   // Sub-scores (geometric breakdown from MediaPipe)
   const subEl = document.getElementById('subScores');
   subEl.innerHTML = '';
-  const s = currentLang === 'he';
-  const subNames = s
-    ? ['סימטריה','יחס הזהב','שלישים','קו לסת','עיניים']
-    : ['Symmetry','Golden Ratio','Facial Thirds','Jawline','Eyes'];
+  const subNames = ['Symmetry','Golden Ratio','Facial Thirds','Jawline','Eyes'];
   const subItems = [
     { name: subNames[0], val: beauty.symmetry,   color: '#7dd3fc' },
     { name: subNames[1], val: beauty.goldenRatio, color: '#fbbf24' },
@@ -1720,7 +1677,7 @@ function showError(msg) {
 // Show a non-blocking API warning (continues with face-api fallback)
 function showApiError(msg) {
   const el = document.getElementById('apiErrorBanner');
-  el.textContent = '⚠️ Claude API: ' + msg + (currentLang === 'he' ? ' — ממשיך עם ניתוח רגיל' : ' — falling back to local analysis');
+  el.textContent = '⚠️ AI: ' + msg + ' — falling back to local analysis';
   el.style.display = 'block';
   setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
@@ -1747,9 +1704,7 @@ async function openCamera() {
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
   } catch (e) {
-    alert(currentLang === 'he'
-      ? 'לא ניתן לגשת למצלמה. אנא אשר הרשאת מצלמה.'
-      : 'Camera access denied. Please allow camera permission.');
+    alert('Camera access denied. Please allow camera permission.');
     return;
   }
 
@@ -1851,11 +1806,10 @@ function drawOvalGuide(canvas, video) {
 
 async function checkFacePosition(video, overlay) {
   if (!video.videoWidth || !modelsLoaded) {
-    setTip(currentLang === 'he' ? 'טוען מודלים...' : 'Loading models...', 'warn');
+    setTip('Loading models...', 'warn');
     return;
   }
 
-  // Grab current frame into a small canvas for fast detection
   const snap = document.createElement('canvas');
   snap.width = 320; snap.height = 240;
   const ctx = snap.getContext('2d');
@@ -1866,57 +1820,43 @@ async function checkFacePosition(video, overlay) {
     .detectSingleFace(snap, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3, inputSize: 320 }))
     .withFaceLandmarks();
 
-  const s    = currentLang === 'he';
-  const cw   = overlay.width;
-  const ch   = overlay.height;
-  const ovalCX = cw / 2;
-  const ovalCY = ch * 0.47;
-  const ovalRX = cw * 0.28;
-  const ovalRY = ch * 0.40;
+  const cw = overlay.width, ch = overlay.height;
+  const ovalCX = cw / 2, ovalCY = ch * 0.47;
+  const ovalRX = cw * 0.28, ovalRY = ch * 0.40;
 
   if (!det) {
     faceOk = false;
     document.getElementById('captureBtn').classList.remove('ready');
-    setTip(s ? 'לא זוהה פנים — הסתכל למצלמה' : 'No face detected — look at the camera', 'warn');
+    setTip('No face detected — look at the camera', 'warn');
     return;
   }
 
-  // Map detection box from 320x240 snap to overlay coords
   const scaleX = cw / 320, scaleY = ch / 240;
   const box = det.detection.box;
   const faceCX = (box.x + box.width  / 2) * scaleX;
   const faceCY = (box.y + box.height / 2) * scaleY;
-  const faceW  = box.width  * scaleX;
   const faceH  = box.height * scaleY;
 
-  // Ideal face size: face height ~75-100% of oval height
-  const idealH = ovalRY * 1.75;
-  const sizeRatio = faceH / idealH;
-
-  // Offset from oval center
+  const sizeRatio = faceH / (ovalRY * 1.75);
   const offX = Math.abs(faceCX - ovalCX) / ovalRX;
   const offY = Math.abs(faceCY - ovalCY) / ovalRY;
 
   if (sizeRatio < 0.55) {
     faceOk = false;
-    setTip(s ? '📏 התקרב קצת למצלמה' : '📏 Move a bit closer', 'warn');
+    setTip('📏 Move a bit closer', 'warn');
   } else if (sizeRatio > 1.35) {
     faceOk = false;
-    setTip(s ? '📏 התרחק קצת' : '📏 Move back a little', 'warn');
+    setTip('📏 Move back a little', 'warn');
   } else if (offX > 0.5) {
     faceOk = false;
-    setTip(faceCX < ovalCX
-      ? (s ? '← הזז ימינה' : '← Move right')
-      : (s ? '→ הזז שמאלה' : '→ Move left'), 'warn');
+    setTip(faceCX < ovalCX ? '← Move right' : '→ Move left', 'warn');
   } else if (offY > 0.5) {
     faceOk = false;
-    setTip(faceCY < ovalCY
-      ? (s ? '↓ הזז למטה' : '↓ Move down')
-      : (s ? '↑ הזז למעלה' : '↑ Move up'), 'warn');
+    setTip(faceCY < ovalCY ? '↓ Move down' : '↑ Move up', 'warn');
   } else {
     faceOk = true;
     document.getElementById('captureBtn').classList.add('ready');
-    setTip(s ? '✓ מצוין! לחץ לצילום' : '✓ Perfect! Press to capture', 'ok');
+    setTip('✓ Perfect! Press to capture', 'ok');
   }
 }
 
@@ -1926,111 +1866,11 @@ function setTip(text, type) {
   bar.className = 'tip-bar' + (type === 'ok' ? ' tip-ok' : type === 'warn' ? ' tip-warn' : '');
 }
 
-/* ════════════════════════════════════════
-   LANGUAGE TOGGLE
-════════════════════════════════════════ */
-const STRINGS = {
-  en: {
-    title: 'AI Face Analyzer',
-    subtitle: 'Upload a photo to discover your estimated age, gender & beauty score',
-    dropTitle: 'Drop a photo here',
-    dropSub: 'All formats supported — JPG, PNG, HEIC, AVIF, WebP & more',
-    dropOr: '── or ──',
-    chooseBtn: 'Choose Photo',
-    step1: 'Detecting face in photo...',
-    step2: 'Analyzing age & gender (multi-pass)...',
-    step3: 'Computing beauty score (with retries)...',
-    errorDefault: 'No face detected. Please try another photo.',
-    tryAgain: 'Try Again',
-    labelAge: 'Estimated Age',
-    labelGender: 'Gender',
-    labelBeauty: 'Beauty Score',
-    disclaimer: '* Score is based on mathematical proportions only (symmetry, golden ratio, rule of thirds) and does not represent true beauty.',
-    resetBtn: 'Analyze New Photo',
-    male: 'Male', female: 'Female',
-    confidence: '% confidence',
-    beautyLabels: ['Unique','Average','Good Looking','Very Attractive','Stunning!'],
-    subNames: ['Symmetry','Golden Ratio','Facial Thirds','Jawline','Eyes'],
-    camBtn: 'Use Camera',
-    camCancel: '✕ Cancel',
-    camGuide: 'Look straight at the camera · Good lighting · No sunglasses',
-    langBtn: 'עברית',
-  },
-  he: {
-    title: 'ניתוח פנים AI',
-    subtitle: 'העלה תמונה וגלה את הגיל, המגדר וציון היופי שלך',
-    dropTitle: 'גרור תמונה לכאן',
-    dropSub: 'כל סוגי התמונות — JPG, PNG, HEIC, AVIF, WebP ועוד',
-    dropOr: '── או ──',
-    chooseBtn: 'בחר תמונה',
-    step1: 'מזהה פנים בתמונה...',
-    step2: 'מנתח גיל ומגדר (ריבוי ניסיונות)...',
-    step3: 'מחשב ציון יופי (עם ניסיונות חוזרים)...',
-    errorDefault: 'לא זוהו פנים בתמונה. נסה תמונה אחרת.',
-    tryAgain: 'נסה שוב',
-    labelAge: 'גיל משוער',
-    labelGender: 'מגדר',
-    labelBeauty: 'ציון יופי',
-    disclaimer: '* הציון מבוסס על פרופורציות מתמטיות בלבד (סימטריה, יחס הזהב, כלל השלישים) ואינו מייצג יופי אמיתי.',
-    resetBtn: 'נתח תמונה חדשה',
-    male: 'זכר', female: 'נקבה',
-    confidence: '% ביטחון',
-    beautyLabels: ['ייחודי','ממוצע','נאה','יפה מאוד','מדהים!'],
-    subNames: ['סימטריה','יחס הזהב','שלישים','קו לסת','עיניים'],
-    camBtn: 'צלם עם מצלמה',
-    camCancel: '✕ ביטול',
-    camGuide: 'הסתכל ישר למצלמה · תאורה טובה · ללא משקפי שמש',
-    langBtn: 'English',
-  },
-};
-
-let currentLang = 'en';
-
 // Init
 (function() {
   selectModel(selectedModel);
   updateAiBanner();
 })();
-
-function toggleLang() {
-  currentLang = currentLang === 'en' ? 'he' : 'en';
-  applyLang(currentLang);
-}
-
-function applyLang(lang) {
-  const s = STRINGS[lang];
-  const html = document.documentElement;
-  html.lang = lang === 'he' ? 'he' : 'en';
-  html.dir  = lang === 'he' ? 'rtl' : 'ltr';
-
-  document.title = s.title;
-  document.querySelector('.header h1').textContent = s.title;
-  document.querySelector('.header p').textContent  = s.subtitle;
-  document.querySelector('.upload-title').textContent = s.dropTitle;
-  document.querySelector('.upload-sub').textContent   = s.dropSub;
-  document.querySelector('.upload-or').textContent    = s.dropOr;
-  document.getElementById('uploadBtn').textContent    = s.chooseBtn;
-
-  document.querySelector('#step1 span:last-child').textContent = s.step1;
-  document.querySelector('#step2 span:last-child').textContent = s.step2;
-  document.querySelector('#step3 span:last-child').textContent = s.step3;
-
-  document.querySelector('.error-text').textContent = s.errorDefault;
-  document.querySelector('.error-msg .reset-btn').textContent = s.tryAgain;
-
-  document.querySelectorAll('.result-label')[0].textContent = s.labelAge;
-  document.querySelectorAll('.result-label')[1].textContent = s.labelBeauty;
-  document.querySelectorAll('.result-label')[2].textContent = s.labelGender;
-
-  document.querySelector('.disclaimer').textContent = s.disclaimer;
-  document.querySelector('.results > div:last-child .reset-btn').textContent = s.resetBtn;
-
-  document.getElementById('langToggle').textContent  = s.langBtn;
-  document.getElementById('camBtnLabel').textContent  = s.camBtn;
-  document.getElementById('camCancelBtn').textContent = s.camCancel;
-  document.getElementById('camGuideText').textContent = s.camGuide;
-  updateAiBanner();
-}
 </script>
 </body>
 </html>

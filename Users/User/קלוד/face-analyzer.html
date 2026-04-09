@@ -525,107 +525,6 @@
     .claude-ai-banner-sub  { font-size: 0.75rem; color: rgba(255,255,255,0.4); }
     .claude-ai-banner-arrow { display: none; }
 
-    /* ── API Key settings panel ── */
-    .api-settings-btn {
-      position: fixed;
-      bottom: 16px;
-      left: 70px;
-      z-index: 10;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: rgba(255,255,255,0.4);
-      border-radius: 12px;
-      padding: 5px 10px;
-      font-size: 0.72rem;
-      font-family: 'Heebo', sans-serif;
-      cursor: pointer;
-      transition: all 0.2s;
-      backdrop-filter: blur(6px);
-    }
-    .api-settings-btn:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.2); }
-    .api-settings-btn.active {
-      background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(251,191,36,0.1));
-      border-color: rgba(251,191,36,0.4);
-      color: #fbbf24;
-      font-weight: 700;
-    }
-    .api-panel {
-      position: fixed;
-      bottom: 52px;
-      left: 16px;
-      z-index: 20;
-      background: rgba(30,30,60,0.95);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 16px;
-      box-shadow: 0 12px 48px rgba(0,0,0,0.5);
-      padding: 16px 18px;
-      width: 300px;
-      display: none;
-      animation: panelIn 0.15s ease;
-      backdrop-filter: blur(20px);
-    }
-    @keyframes panelIn {
-      from { opacity:0; transform: translateY(8px); }
-      to   { opacity:1; transform: translateY(0); }
-    }
-    .api-panel-title {
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: #fbbf24;
-      margin-bottom: 4px;
-    }
-    .api-panel-sub {
-      font-size: 0.74rem;
-      color: rgba(255,255,255,0.4);
-      margin-bottom: 10px;
-    }
-    .api-key-input {
-      width: 100%;
-      padding: 9px 12px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 10px;
-      font-size: 0.85rem;
-      font-family: monospace;
-      color: #e8eaf6;
-      background: rgba(255,255,255,0.06);
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    .api-key-input:focus { border-color: #fbbf24; background: rgba(255,255,255,0.1); }
-    .ai-mode-tag {
-      display: inline-block;
-      background: linear-gradient(135deg, #f7971e, #ffd200);
-      color: #1a1a2e;
-      border-radius: 20px;
-      padding: 2px 10px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      margin-top: 8px;
-      display: none;
-    }
-    .model-btn {
-      flex: 1;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 10px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.04);
-      cursor: pointer;
-      font-family: 'Heebo', sans-serif;
-      text-align: center;
-      transition: all 0.15s;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .model-btn.active {
-      background: rgba(251,191,36,0.12);
-      border-color: rgba(251,191,36,0.4);
-    }
-    .model-btn:hover { border-color: rgba(255,255,255,0.2); }
-    .model-name { font-size: 0.82rem; font-weight: 700; color: #e8eaf6; }
-    .model-desc { font-size: 0.68rem; color: rgba(255,255,255,0.4); }
-    .model-btn.active .model-name { color: #fbbf24; }
-    .model-btn.active .model-desc { color: rgba(251,191,36,0.7); }
 
     .ai-strengths {
       margin-top: 14px;
@@ -701,18 +600,9 @@
       .capture-btn { width: 58px; height: 58px; }
 
       /* Bottom buttons */
-      .lang-toggle, .api-settings-btn {
+      .lang-toggle {
         padding: 7px 12px;
         font-size: 0.75rem;
-      }
-      .api-settings-btn { left: 80px; }
-
-      /* API panel — full width on mobile */
-      .api-panel {
-        left: 12px;
-        right: 12px;
-        width: auto;
-        bottom: 58px;
       }
     }
 
@@ -732,30 +622,11 @@
 
 <button class="lang-toggle" id="langToggle" onclick="toggleLang()">עברית</button>
 
-<!-- API Settings panel -->
-<div class="api-panel" id="apiPanel">
-  <div class="api-panel-title" id="apiPanelTitle">🔑 Personal Anthropic Key</div>
-  <div class="api-panel-sub" id="apiPanelSub">Optional — override with your own Anthropic key</div>
-  <div style="position:relative; display:flex; align-items:center; gap:6px;">
-    <input type="password" id="apiKeyInput" class="api-key-input" style="flex:1" placeholder="sk-ant-..." oninput="onApiKeyInput(event)" />
-    <button onclick="toggleKeyVisibility()" id="eyeBtn" style="background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px;color:#9ca3af;" title="Show/hide key">👁</button>
-  </div>
-  <div style="margin-top:10px;">
-    <div style="font-size:0.75rem;font-weight:700;color:#6b7280;margin-bottom:6px;" id="modelLabel">Model</div>
-    <div style="display:flex;gap:6px;">
-      <button class="model-btn active" id="modelHaiku" onclick="selectModel('haiku')">
-        <span class="model-name">Haiku</span>
-        <span class="model-desc" id="haikuDesc">Fast · Low cost</span>
-      </button>
-      <button class="model-btn" id="modelSonnet" onclick="selectModel('sonnet')">
-        <span class="model-name">Sonnet</span>
-        <span class="model-desc" id="sonnetDesc">Accurate · Slower</span>
-      </button>
-    </div>
-  </div>
-  <span class="ai-mode-tag" id="aiModeTag">✨ AI Mode On</span>
-</div>
-<button class="api-settings-btn" id="apiSettingsBtn" onclick="toggleApiPanel()">⚙ API</button>
+<!-- Hidden API key input (kept for code compatibility) -->
+<input type="hidden" id="apiKeyInput" value="" />
+<span id="aiModeTag" style="display:none"></span>
+<span id="modelHaiku" style="display:none"></span>
+<span id="modelSonnet" style="display:none"></span>
 
 <div class="bubbles" id="bubbles"></div>
 
@@ -933,13 +804,6 @@ function isUsingBuiltInKey() {
 
 let selectedModel = localStorage.getItem('claude_model') || 'sonnet';
 
-function onApiKeyInput(e) {
-  const key = e.target.value.trim();
-  localStorage.setItem('anthropic_key', key);
-  document.getElementById('aiModeTag').style.display = key ? 'inline-block' : 'none';
-  document.getElementById('apiSettingsBtn').classList.toggle('active', !!key);
-  updateAiBanner();
-}
 
 function updateAiBanner() {
   const banner = document.getElementById('claudeAiBanner');
@@ -957,33 +821,10 @@ function updateAiBanner() {
   }
 }
 
-function toggleKeyVisibility() {
-  const inp = document.getElementById('apiKeyInput');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-
 function selectModel(model) {
   selectedModel = model;
   localStorage.setItem('claude_model', model);
-  document.getElementById('modelHaiku').classList.toggle('active', model === 'haiku');
-  document.getElementById('modelSonnet').classList.toggle('active', model === 'sonnet');
 }
-
-function toggleApiPanel() {
-  const panel = document.getElementById('apiPanel');
-  const isOpen = panel.style.display === 'block';
-  panel.style.display = isOpen ? 'none' : 'block';
-  if (!isOpen) document.getElementById('apiKeyInput').focus();
-}
-
-// Close panel when clicking outside
-document.addEventListener('click', (e) => {
-  const panel = document.getElementById('apiPanel');
-  const btn = document.getElementById('apiSettingsBtn');
-  if (panel.style.display === 'block' && !panel.contains(e.target) && !btn.contains(e.target)) {
-    panel.style.display = 'none';
-  }
-});
 
 // Convert canvas → JPEG base64, resized to maxSide
 function canvasToBase64(canvas, maxSide = 512) {
@@ -2109,12 +1950,6 @@ const STRINGS = {
     camCancel: '✕ Cancel',
     camGuide: 'Look straight at the camera · Good lighting · No sunglasses',
     langBtn: 'עברית',
-    apiKeyLabel: '🔑 Personal Anthropic Key',
-    apiOptional: 'Optional — override with your own Anthropic key',
-    apiPlaceholder: 'sk-ant-...',
-    modelLabel: 'Model',
-    haikuDesc: 'Fast · Low cost',
-    sonnetDesc: 'Accurate · Slower',
   },
   he: {
     title: 'ניתוח פנים AI',
@@ -2141,25 +1976,13 @@ const STRINGS = {
     camCancel: '✕ ביטול',
     camGuide: 'הסתכל ישר למצלמה · תאורה טובה · ללא משקפי שמש',
     langBtn: 'English',
-    apiKeyLabel: '🔑 מפתח Anthropic אישי',
-    apiOptional: 'אופציונלי — דריסה עם מפתח Anthropic שלך',
-    apiPlaceholder: 'sk-ant-...',
-    modelLabel: 'מודל',
-    haikuDesc: 'מהיר · זול',
-    sonnetDesc: 'מדויק · איטי יותר',
   },
 };
 
 let currentLang = 'en';
 
-// Restore saved API key + model on load
+// Init
 (function() {
-  const saved = localStorage.getItem('anthropic_key') || '';
-  if (saved) {
-    document.getElementById('apiKeyInput').value = saved;
-    document.getElementById('aiModeTag').style.display = 'inline-block';
-    document.getElementById('apiSettingsBtn').classList.add('active');
-  }
   selectModel(selectedModel);
   updateAiBanner();
 })();
@@ -2201,12 +2024,6 @@ function applyLang(lang) {
   document.getElementById('camBtnLabel').textContent  = s.camBtn;
   document.getElementById('camCancelBtn').textContent = s.camCancel;
   document.getElementById('camGuideText').textContent = s.camGuide;
-  document.getElementById('apiPanelTitle').textContent = s.apiKeyLabel;
-  document.getElementById('apiPanelSub').textContent   = s.apiOptional;
-  document.getElementById('apiKeyInput').placeholder   = s.apiPlaceholder;
-  document.getElementById('modelLabel').textContent    = s.modelLabel;
-  document.getElementById('haikuDesc').textContent     = s.haikuDesc;
-  document.getElementById('sonnetDesc').textContent    = s.sonnetDesc;
   updateAiBanner();
 }
 </script>

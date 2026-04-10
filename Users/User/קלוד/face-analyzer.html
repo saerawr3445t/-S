@@ -1065,8 +1065,8 @@ STEP 1 — AGE: Examine each zone, note what you actually observe:
 • Jaw/neck: sharp edge / soft / jowling / neck texture?
 
 Age reference (be forensically honest — do NOT soften):
-  13-17: zero pores, baby fat, no creases at all, very round features
-  18-24: pores starting, zero wrinkles, plump full face
+  13-17: zero pores, baby fat, no creases at all, very round juvenile features, unfinished bone structure
+  18-24: pores starting, zero wrinkles, plump full face, jaw structure maturing
   25-32: pores visible, first faint eye-corner lines only, mostly smooth
   33-40: nasolabial shadows, forehead lines forming, slight eye area change
   41-50: clear nasolabial folds, established forehead lines, jaw softening
@@ -1074,11 +1074,16 @@ Age reference (be forensically honest — do NOT soften):
   63-74: prominent wrinkles everywhere, significant jowling, hollow temples
   75+: very thin papery skin, deep furrows, prominent bone structure
 
-IMPORTANT — BIAS CORRECTION (for adults only):
-• If the face is clearly a child or teenager (baby fat, completely smooth, no pores, round juvenile features) → estimate honestly with NO correction. Teens 13-17 should be estimated as teens.
-• If the face appears 18-30 → AI models underestimate by 2-4 years, add 2-3 years.
-• If the face appears 30+ → AI models underestimate by 4-8 years, add 4-5 years.
-Never add the adult bias correction to clearly juvenile faces.
+CRITICAL RULES:
+• A round/chubby face WITHOUT wrinkles or folds = juvenile baby fat, NOT an adult. Do NOT confuse facial fullness with age.
+• Key teen indicator: completely smooth skin surface (silk-like, zero texture lines), soft undefined jaw, round orbital bones, small undeveloped nose.
+• A face with heavy brow + smooth skin + baby fat = teen male, NOT an adult male.
+• Low image quality / blur / color cast does NOT mean older skin — judge structure only.
+
+BIAS CORRECTION (adults only):
+• Clearly juvenile (baby fat, completely smooth, unfinished bone structure) → NO correction. Estimate teens as teens.
+• Appears 18-30 → add 2-3 years.
+• Appears 30+ → add 4-5 years.
 
 STEP 2 — GENDER (bone structure only, ignore hair/makeup/lighting):
   Male: heavy brow ridge protruding forward, wide square jaw angle, wide flat nose bridge, deep-set eyes, larger chin
@@ -1129,8 +1134,9 @@ Systematically examine each zone and note the specific marker you see:
 • Neck (if visible): [smooth / texture / bands]
 
 After examining all zones, give your best age estimate.
-Bias correction rule:
-• Clearly juvenile face (baby fat, zero pores, round features) → NO correction. Teens should be estimated as teens.
+CRITICAL: A round/chubby face with NO wrinkles = teen baby fat, not adult weight. Judge bone structure maturity, not face shape.
+Bias correction:
+• Juvenile face (baby fat, silk-smooth skin, unfinished bone structure) → NO correction. Teens = teens.
 • Appears 18-30 → add 2-3 years.
 • Appears 30+ → add 4-5 years.
 
@@ -1166,6 +1172,9 @@ Output ONLY this JSON:
     } catch (e) {
       console.warn('[Face Analyzer] Age verification pass failed (non-fatal):', e);
     }
+
+    // Sanity clamp: age must be between 10 and 95
+    result.age = Math.max(10, Math.min(95, result.age));
 
     return result;
   } catch (e) {

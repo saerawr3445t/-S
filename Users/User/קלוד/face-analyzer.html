@@ -854,7 +854,13 @@
    GLOBALS
 ════════════════════════════════════════ */
 const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js/weights';
-const FACEAPI_AGE_BIAS = 4; // face-api ageGenderNet known underestimation correction
+// face-api ageGenderNet known underestimation correction — age-dependent
+function getFaceApiBias(rawAge) {
+  if (rawAge < 16) return 0;   // teens: no bias correction needed
+  if (rawAge < 22) return 2;   // young adults: small correction
+  return 4;                    // adults 22+: full correction
+}
+const FACEAPI_AGE_BIAS = 4; // kept for legacy usage
 let modelsLoaded = false;
 let ssdLoaded = false;
 let faceMeshReady = false;
@@ -1068,7 +1074,11 @@ Age reference (be forensically honest — do NOT soften):
   63-74: prominent wrinkles everywhere, significant jowling, hollow temples
   75+: very thin papery skin, deep furrows, prominent bone structure
 
-IMPORTANT: AI models systematically underestimate age by 4-8 years. After reaching your estimate, add 4-5 years as a bias correction unless the skin is clearly under 25 (completely crease-free, plump, zero nasolabial shadow).
+IMPORTANT — BIAS CORRECTION (for adults only):
+• If the face is clearly a child or teenager (baby fat, completely smooth, no pores, round juvenile features) → estimate honestly with NO correction. Teens 13-17 should be estimated as teens.
+• If the face appears 18-30 → AI models underestimate by 2-4 years, add 2-3 years.
+• If the face appears 30+ → AI models underestimate by 4-8 years, add 4-5 years.
+Never add the adult bias correction to clearly juvenile faces.
 
 STEP 2 — GENDER (bone structure only, ignore hair/makeup/lighting):
   Male: heavy brow ridge protruding forward, wide square jaw angle, wide flat nose bridge, deep-set eyes, larger chin
@@ -1119,7 +1129,10 @@ Systematically examine each zone and note the specific marker you see:
 • Neck (if visible): [smooth / texture / bands]
 
 After examining all zones, give your best age estimate.
-Remember: AI models typically underestimate age by 4-8 years. Apply a +5 correction unless skin is clearly under 25 (completely smooth, zero nasolabial shadow).
+Bias correction rule:
+• Clearly juvenile face (baby fat, zero pores, round features) → NO correction. Teens should be estimated as teens.
+• Appears 18-30 → add 2-3 years.
+• Appears 30+ → add 4-5 years.
 
 Output ONLY this JSON:
 {"age":<integer>,"ageRange":"<e.g. 34-42>"}`;
@@ -1238,12 +1251,14 @@ async function startAnalysis(dataUrl) {
       analysisImg.src = dataUrl;
     });
 
-    // Prepare canvas: min 640px, max 1200px on longest side (larger = better detection)
+    // Prepare canvas: min 640px, max 1200px on longest side
     const origW = analysisImg.width, origH = analysisImg.height;
     let scale = 1;
     if (Math.max(origW, origH) > 1200) scale = 1200 / Math.max(origW, origH);
     if (Math.max(origW, origH) < 640)  scale = 640  / Math.max(origW, origH);
-    const canvas = makeCanvas(analysisImg, Math.round(origW * scale), Math.round(origH * scale));
+    const rawCanvas = makeCanvas(analysisImg, Math.round(origW * scale), Math.round(origH * scale));
+    // Correct purple/blue/yellow color casts (common in webcam/indoor photos)
+    const canvas = correctColorCast(rawCanvas);
 
     completeStep(1);
 
@@ -1273,7 +1288,7 @@ async function startAnalysis(dataUrl) {
       gender = claudeResult.gender;
       genderProb = claudeResult.genderConfidence || 0.9;
       // Cross-validate with face-api: catch extreme outliers
-      const faceApiAge = detection?.age ? Math.round(detection.age + FACEAPI_AGE_BIAS) : null;
+      const faceApiAge = detection?.age ? Math.round(detection.age + getFaceApiBias(detection.age)) : null;
       if (faceApiAge) {
         const diff = Math.abs(faceApiAge - age);
         console.log(`Cross-validate: AI=${age}, face-api=${faceApiAge}, diff=${diff}`);
@@ -1476,7 +1491,7 @@ async function precisionAnalysis(faceCanvas, firstDetection) {
   const genderProb = totalWeight > 0 ? Math.abs(genderScore) / totalWeight : 0.5;
 
   return {
-    age: Math.round(meanAge + FACEAPI_AGE_BIAS),
+    age: Math.round(meanAge + getFaceApiBias(meanAge)),
     gender,
     genderProb,
   };
@@ -1582,6 +1597,37 @@ function normalizeCanvas(src) {
 // Legacy alias used elsewhere
 function enhanceImage(srcCanvas) {
   return preprocessCanvas(srcCanvas, 'brightness(1.3) contrast(1.2)');
+}
+
+// Detect and correct strong color casts (purple/blue webcam, yellow indoor light)
+// Returns corrected canvas. If no strong cast detected, returns original.
+function correctColorCast(src) {
+  const c = document.createElement('canvas');
+  c.width = src.width; c.height = src.height;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(src, 0, 0);
+  const img = ctx.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  let rSum = 0, gSum = 0, bSum = 0, count = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    rSum += d[i]; gSum += d[i+1]; bSum += d[i+2]; count++;
+  }
+  const rAvg = rSum / count, gAvg = gSum / count, bAvg = bSum / count;
+  const overall = (rAvg + gAvg + bAvg) / 3;
+  // Only correct if deviation > 15 (significant cast)
+  const rScale = overall / Math.max(rAvg, 1);
+  const gScale = overall / Math.max(gAvg, 1);
+  const bScale = overall / Math.max(bAvg, 1);
+  const maxDev = Math.max(Math.abs(1 - rScale), Math.abs(1 - gScale), Math.abs(1 - bScale));
+  if (maxDev < 0.12) return src; // no significant cast
+  for (let i = 0; i < d.length; i += 4) {
+    d[i]   = Math.min(255, Math.round(d[i]   * rScale));
+    d[i+1] = Math.min(255, Math.round(d[i+1] * gScale));
+    d[i+2] = Math.min(255, Math.round(d[i+2] * bScale));
+  }
+  ctx.putImageData(img, 0, 0);
+  console.log(`[Face Analyzer] Color cast corrected: R×${rScale.toFixed(2)} G×${gScale.toFixed(2)} B×${bScale.toFixed(2)}`);
+  return c;
 }
 
 /* ════════════════════════════════════════

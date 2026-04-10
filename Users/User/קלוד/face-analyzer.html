@@ -52,19 +52,19 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 28px;
+      gap: 32px;
       width: 100%;
-      max-width: 900px;
-      padding: 36px 20px 80px;
+      max-width: 1100px;
+      padding: 48px 32px 100px;
     }
 
     /* ── Header ── */
     .header { text-align: center; margin-top: 4px; }
     .header h1 {
-      font-size: 2.6rem;
+      font-size: 3.4rem;
       font-weight: 900;
       color: #1e293b;
-      letter-spacing: -1px;
+      letter-spacing: -1.5px;
     }
     .header h1 span {
       background: linear-gradient(90deg, #6366f1, #8b5cf6);
@@ -72,52 +72,53 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    .header p { font-size: 1rem; color: #64748b; margin-top: 8px; }
+    .header p { font-size: 1.1rem; color: #64748b; margin-top: 10px; }
 
     /* ── Card ── */
     .glass {
       background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 20px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-      padding: 32px;
+      border-radius: 24px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.07);
+      padding: 40px;
     }
 
     /* ── Upload area ── */
     .upload-area {
       width: 100%;
-      max-width: 580px;
+      max-width: 760px;
       text-align: center;
       cursor: pointer;
       transition: all 0.25s;
-      border: 2px dashed #c7d2fe;
+      border: 2.5px dashed #c7d2fe;
       background: linear-gradient(135deg, #fafaff 0%, #f0f4ff 100%);
+      padding: 56px 40px !important;
     }
     .upload-area:hover, .upload-area.drag-over {
       border-color: #6366f1;
       background: linear-gradient(135deg, #f0f1ff 0%, #ede9fe 100%);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(99,102,241,0.12);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(99,102,241,0.15);
     }
     .upload-icon {
-      font-size: 4rem;
-      margin-bottom: 10px;
-      filter: drop-shadow(0 2px 8px rgba(99,102,241,0.2));
+      font-size: 5.5rem;
+      margin-bottom: 14px;
+      filter: drop-shadow(0 4px 12px rgba(99,102,241,0.25));
     }
     .upload-title {
-      font-size: 1.35rem;
-      font-weight: 700;
-      margin-bottom: 6px;
+      font-size: 1.7rem;
+      font-weight: 800;
+      margin-bottom: 8px;
       color: #1e293b;
     }
-    .upload-sub { color: #94a3b8; font-size: 0.88rem; margin-bottom: 20px; }
+    .upload-sub { color: #94a3b8; font-size: 1rem; margin-bottom: 24px; }
     .upload-or {
       color: #cbd5e1;
-      margin: 14px 0;
-      font-size: 0.82rem;
+      margin: 18px 0;
+      font-size: 0.88rem;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
     .upload-or::before, .upload-or::after {
       content: '';
@@ -130,17 +131,17 @@
       color: #fff;
       border: none;
       border-radius: 50px;
-      padding: 13px 36px;
-      font-size: 1rem;
+      padding: 15px 48px;
+      font-size: 1.1rem;
       font-weight: 700;
       font-family: 'Inter', sans-serif;
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
-      box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+      box-shadow: 0 4px 20px rgba(99,102,241,0.4);
     }
     .upload-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(99,102,241,0.45);
+      box-shadow: 0 10px 28px rgba(99,102,241,0.5);
     }
     #fileInput { display: none; }
 
@@ -197,13 +198,13 @@
 
     .results-photo-wrap {
       position: relative;
-      width: 220px;
-      height: 220px;
-      margin: 0 auto 28px;
+      width: 280px;
+      height: 280px;
+      margin: 0 auto 32px;
       border-radius: 50%;
       overflow: hidden;
-      border: 4px solid #e0e7ff;
-      box-shadow: 0 0 0 8px rgba(99,102,241,0.08), 0 8px 32px rgba(0,0,0,0.1);
+      border: 5px solid #e0e7ff;
+      box-shadow: 0 0 0 10px rgba(99,102,241,0.07), 0 12px 40px rgba(0,0,0,0.12);
     }
     .results-photo-wrap img, .results-photo-wrap canvas {
       position: absolute;
@@ -238,10 +239,10 @@
 
     .result-card {
       flex: 1;
-      min-width: 200px;
-      max-width: 280px;
+      min-width: 220px;
+      max-width: 320px;
       text-align: center;
-      padding: 28px 20px;
+      padding: 36px 28px;
       opacity: 0;
       transform: translateY(16px);
       animation: cardIn 0.45s ease forwards;
@@ -265,7 +266,7 @@
       font-weight: 600;
     }
     .result-value {
-      font-size: 3rem;
+      font-size: 3.6rem;
       font-weight: 900;
       line-height: 1;
       letter-spacing: -2px;
@@ -303,14 +304,14 @@
     /* Beauty ring */
     .beauty-ring-wrap {
       position: relative;
-      width: 120px;
-      height: 120px;
-      margin: 0 auto 10px;
+      width: 140px;
+      height: 140px;
+      margin: 0 auto 12px;
     }
     .beauty-ring-wrap svg {
       transform: rotate(-90deg);
-      width: 120px;
-      height: 120px;
+      width: 140px;
+      height: 140px;
     }
     .ring-bg { fill: none; stroke: #f1f5f9; stroke-width: 9; }
     .ring-fill {
@@ -325,7 +326,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 2rem;
+      font-size: 2.4rem;
       font-weight: 900;
       color: #1e293b;
     }
@@ -569,12 +570,12 @@
       display: flex;
       gap: 0;
       width: 100%;
-      max-width: 580px;
+      max-width: 760px;
     }
     .how-step {
       flex: 1;
       text-align: center;
-      padding: 16px 10px;
+      padding: 22px 16px;
       position: relative;
     }
     .how-step:not(:last-child)::after {
@@ -584,21 +585,21 @@
       top: 50%;
       transform: translateY(-50%);
       color: #c7d2fe;
-      font-size: 1.1rem;
+      font-size: 1.3rem;
     }
     .how-step-icon {
-      font-size: 1.6rem;
-      margin-bottom: 6px;
+      font-size: 2rem;
+      margin-bottom: 8px;
     }
     .how-step-title {
-      font-size: 0.8rem;
+      font-size: 0.92rem;
       font-weight: 700;
       color: #475569;
     }
     .how-step-sub {
-      font-size: 0.7rem;
+      font-size: 0.78rem;
       color: #94a3b8;
-      margin-top: 2px;
+      margin-top: 3px;
     }
 
     /* ── Responsive ── */

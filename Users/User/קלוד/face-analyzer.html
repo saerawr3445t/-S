@@ -1105,44 +1105,53 @@ strengths must be specific features you can actually see (e.g. "defined jawline"
 
     if (!result) return null;
 
-    // ── PASS 2: Age verification pass ─────────────────────────────
-    // Only if pass 1 succeeded — cross-checks the age estimate
+    // ── PASS 2: Independent age estimation (no anchoring bias) ───────
+    // Completely separate prompt — does NOT reveal pass 1 result to avoid anchoring
     try {
-      const ageVerifyPrompt = `Look at this face. Focus ONLY on aging markers to verify the age.
+      const ageVerifyPrompt = `You are a forensic age specialist. Estimate this person's age from facial features only.
 
-Examine these 5 zones:
-1. Skin surface: smooth like silk / pores / fine lines / wrinkles
-2. Under-eye: tight/smooth OR puffy/fine lines/hollowing/dark circles
-3. Nasolabial folds (nose-to-mouth lines): none / faint shadow / visible crease / deep groove
-4. Forehead: smooth / 1-2 faint lines / multiple lines / deep furrows
-5. Jaw/chin: sharp defined / slightly soft / jowling / neck lines
+Systematically examine each zone and note the specific marker you see:
+• Skin texture: [smooth silk / pores only / fine lines / wrinkles]
+• Under-eye zone: [tight/smooth / faint lines / bags or hollowing]
+• Nasolabial folds: [absent / faint shadow / visible crease / deep groove]
+• Forehead: [smooth / 1-2 lines / multiple lines / deep furrows]
+• Jawline: [sharp / softening / jowling present]
+• Neck (if visible): [smooth / texture / bands]
 
-First estimate was ${result.age} years old (${result.ageRange}).
-Based on your independent examination of these 5 zones, what is your age estimate?
+After examining all zones, give your best age estimate.
+Remember: AI models typically underestimate age by 4-8 years. Apply a +5 correction unless skin is clearly under 25 (completely smooth, zero nasolabial shadow).
 
-Output ONLY this JSON on the last line:
-{"age":<integer>,"ageRange":"<span>","confidence":<0.5-1.0>}`;
+Output ONLY this JSON:
+{"age":<integer>,"ageRange":"<e.g. 34-42>"}`;
 
       const result2 = await callClaude(base64, ageVerifyPrompt);
       if (result2 && result2.age && !result2._error) {
         const age1 = result.age;
         const age2 = result2.age;
         const diff = Math.abs(age1 - age2);
-        console.log(`Age pass1=${age1}, pass2=${age2}, diff=${diff}`);
+        console.log(`[Face Analyzer] Pass1 age=${age1}, Pass2 age=${age2}, diff=${diff}`);
 
-        if (diff <= 4) {
-          // Very close — average them
+        if (diff <= 5) {
+          // Very consistent — simple average
           result.age = Math.round((age1 + age2) / 2);
-        } else if (diff <= 9) {
-          // Moderate diff — weight toward pass 2 (more focused prompt)
-          result.age = Math.round(age1 * 0.4 + age2 * 0.6);
-          // Use wider age range
-          if (result2.ageRange) result.ageRange = result2.ageRange;
+        } else if (diff <= 12) {
+          // Moderate difference — weight toward median
+          result.age = Math.round(age1 * 0.45 + age2 * 0.55);
+          if (result2.ageRange) {
+            // Use the wider of the two age ranges
+            const r1parts = (result.ageRange || '').match(/(\d+)/g);
+            const r2parts = (result2.ageRange || '').match(/(\d+)/g);
+            if (r1parts && r2parts && r1parts.length >= 2 && r2parts.length >= 2) {
+              const lo = Math.min(parseInt(r1parts[0]), parseInt(r2parts[0]));
+              const hi = Math.max(parseInt(r1parts[1]), parseInt(r2parts[1]));
+              result.ageRange = `${lo}-${hi}`;
+            }
+          }
         }
-        // If diff > 9: pass 1 had more context, keep it
+        // diff > 12: large disagreement, trust pass 1 (more complete prompt)
       }
     } catch (e) {
-      console.warn('Age verification pass failed (non-fatal):', e);
+      console.warn('[Face Analyzer] Age verification pass failed (non-fatal):', e);
     }
 
     return result;
@@ -1291,18 +1300,36 @@ async function startAnalysis(dataUrl) {
 
     let beautyResult;
     if (claudeResult && claudeResult.beautyScore) {
-      // Claude provides the main score; use MediaPipe sub-scores if available
+      // Claude provides the main score; MediaPipe provides sub-scores
+      // Scale sub-scores so their weighted average matches Claude's total
       const mpSub = landmarks ? computeBeautyScore(landmarks) : null;
+      let scaledSub = null;
+      if (mpSub) {
+        const mpTotal = mpSub.total;
+        const claudeTotal = claudeResult.beautyScore;
+        const scale = mpTotal > 0 ? claudeTotal / mpTotal : 1;
+        // Scale each sub-score toward Claude's total (blend 50/50)
+        const scaleSubScore = (v) => v === null ? null :
+          Math.round(clamp(v * scale * 0.5 + v * 0.5, 1, 10) * 10) / 10;
+        scaledSub = {
+          symmetry:   scaleSubScore(mpSub.symmetry),
+          goldenRatio: scaleSubScore(mpSub.goldenRatio),
+          thirds:     scaleSubScore(mpSub.thirds),
+          jawline:    scaleSubScore(mpSub.jawline),
+          eyes:       scaleSubScore(mpSub.eyes),
+        };
+        console.log(`[Face Analyzer] Beauty: Claude=${claudeTotal}, MP=${mpTotal}, scale=${scale.toFixed(2)}`);
+      }
       beautyResult = {
         total: claudeResult.beautyScore,
         beautyLabel: claudeResult.beautyLabel,
         strengths: claudeResult.strengths || [],
         _ageRange: claudeResult.ageRange || '',
-        symmetry:   mpSub ? mpSub.symmetry   : null,
-        goldenRatio: mpSub ? mpSub.goldenRatio : null,
-        thirds:     mpSub ? mpSub.thirds     : null,
-        jawline:    mpSub ? mpSub.jawline    : null,
-        eyes:       mpSub ? mpSub.eyes       : null,
+        symmetry:   scaledSub ? scaledSub.symmetry   : null,
+        goldenRatio: scaledSub ? scaledSub.goldenRatio : null,
+        thirds:     scaledSub ? scaledSub.thirds     : null,
+        jawline:    scaledSub ? scaledSub.jawline    : null,
+        eyes:       scaledSub ? scaledSub.eyes       : null,
       };
     } else {
       beautyResult = landmarks
@@ -1313,6 +1340,7 @@ async function startAnalysis(dataUrl) {
     completeStep(3);
 
     await new Promise(r => setTimeout(r, 400));
+    console.log(`[Face Analyzer] ✅ Final: age=${age}, gender=${gender}(${Math.round(genderProb*100)}%), beauty=${beautyResult.total} "${beautyResult.beautyLabel}"`);
     showResults(dataUrl, canvas, age, gender, genderProb, beautyResult, landmarks);
 
   } catch (err) {
@@ -1361,14 +1389,20 @@ function makeCanvas(src, w, h) {
 
 // Crop canvas to the detected face bounding box with generous padding
 function cropToFace(canvas, box) {
-  const pad = 0.30; // 30% padding around face
-  const x = Math.max(0, Math.floor(box.x - box.width * pad));
-  const y = Math.max(0, Math.floor(box.y - box.height * pad));
-  const w = Math.min(canvas.width - x, Math.ceil(box.width * (1 + pad * 2)));
-  const h = Math.min(canvas.height - y, Math.ceil(box.height * (1 + pad * 2)));
+  // More padding at top (hair/forehead) and bottom (chin/neck) than sides
+  const padX = 0.35;
+  const padTop = 0.45;    // extra for forehead/hair
+  const padBottom = 0.40; // extra for chin/neck (age markers)
 
-  // Target size: 320px on shortest side (optimal for age/gender models)
-  const targetSize = 320;
+  const x = Math.max(0, Math.floor(box.x - box.width * padX));
+  const y = Math.max(0, Math.floor(box.y - box.height * padTop));
+  const x2 = Math.min(canvas.width,  Math.ceil(box.x + box.width  * (1 + padX)));
+  const y2 = Math.min(canvas.height, Math.ceil(box.y + box.height * (1 + padBottom)));
+  const w = x2 - x;
+  const h = y2 - y;
+
+  // Upscale to minimum 400px on shortest side for skin detail
+  const targetSize = 400;
   const shortSide = Math.min(w, h);
   const s = shortSide < targetSize ? targetSize / shortSide : 1;
 

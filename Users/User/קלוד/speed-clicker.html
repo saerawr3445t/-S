@@ -168,7 +168,7 @@ canvas.addEventListener('click', e => {
 
   if (state === 'gameover') {
     const bx=W/2, by=H*0.88, bw=Math.min(W*0.4,220), bh=Math.max(44,H*0.065);
-    if (Math.abs(mx-bx)<bw/2 && Math.abs(my-by)<bh/2) backToMenu();
+    if (Math.abs(mx-bx)<bw/2 && Math.abs(my-by)<bh/2) startGame();
     return;
   }
   if (state === 'playing') {

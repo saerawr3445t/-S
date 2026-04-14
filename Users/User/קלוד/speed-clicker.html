@@ -121,6 +121,7 @@ function tryStart() {
   if (!n) { nameInput.style.borderColor='rgba(255,80,80,0.8)'; nameInput.focus(); return; }
   nameInput.style.borderColor = '';
   playerName = n;
+  localStorage.setItem('speedclicker_name', n);
   hideForm();
   startGame();
 }
@@ -147,6 +148,23 @@ canvas.addEventListener('click', e => {
   const rect = canvas.getBoundingClientRect();
   const mx = (e.clientX-rect.left)*(W/rect.width);
   const my = (e.clientY-rect.top)*(H/rect.height);
+
+  if (state === 'menu') {
+    // START button
+    const sx=W/2, sy=H*0.875, sw=Math.min(W*0.38,210), sh=Math.max(42,H*0.06);
+    if (playerName && Math.abs(mx-sx)<sw/2 && Math.abs(my-sy)<sh/2) {
+      startGame(); return;
+    }
+    // "change name" link at bottom
+    const fs2 = Math.max(12, H*0.02);
+    const linkX = W/2 + fs2*3.2, linkY = H*0.975;
+    if (Math.abs(mx - linkX) < fs2*5 && Math.abs(my - linkY) < fs2) {
+      localStorage.removeItem('speedclicker_name');
+      nameInput.value = playerName;
+      showForm();
+    }
+    return;
+  }
 
   if (state === 'gameover') {
     const bx=W/2, by=H*0.88, bw=Math.min(W*0.4,220), bh=Math.max(44,H*0.065);
@@ -175,7 +193,7 @@ function startGame() {
 function backToMenu() {
   state='menu'; particles=[]; ripples=[]; floaters=[];
   loadScores();
-  showForm();
+  // Don't show form again — name is remembered
 }
 
 // ── Update ───────────────────────────────────────────────────────────────────
@@ -354,9 +372,27 @@ function drawMenu() {
 
   drawLeaderboard(W/2, H*0.12, W*0.72);
 
-  ctx.font=`${Math.max(11,H*0.018)}px sans-serif`;
-  ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.textAlign='center';
-  ctx.fillText('Mouse click only · 5 seconds', W/2, H*0.975);
+  // START button
+  if (playerName) {
+    const sx=W/2, sy=H*0.875, sw=Math.min(W*0.38,210), sh=Math.max(42,H*0.06);
+    ctx.save(); ctx.shadowBlur=22; ctx.shadowColor=`hsl(${bgHue+120},100%,55%)`;
+    const sg=ctx.createLinearGradient(sx-sw/2,sy,sx+sw/2,sy);
+    sg.addColorStop(0,`hsl(${bgHue+120},85%,45%)`); sg.addColorStop(1,`hsl(${bgHue+160},85%,45%)`);
+    ctx.fillStyle=sg; rrect(sx-sw/2,sy-sh/2,sw,sh,sh/2); ctx.fill(); ctx.restore();
+    ctx.font=`bold ${Math.max(14,sh*0.38)}px sans-serif`; ctx.fillStyle='#fff';
+    ctx.textAlign='center'; ctx.fillText('START GAME', sx, sy+Math.max(14,sh*0.38)*0.35);
+  }
+
+  // Player name + change button at bottom
+  const fs2 = Math.max(12, H*0.02);
+  ctx.font=`${fs2}px sans-serif`; ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.textAlign='center';
+  ctx.fillText(`Playing as: ${playerName}  ·  `, W/2 - fs2*1.5, H*0.975);
+  ctx.fillStyle=`hsl(${bgHue+120},80%,65%)`;
+  ctx.fillText('change name', W/2 + fs2*3.2, H*0.975);
+
+  ctx.font=`${Math.max(10,H*0.016)}px sans-serif`;
+  ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.textAlign='center';
+  ctx.fillText('Mouse click only · 5 seconds', W/2, H*0.958);
 }
 
 function drawPlaying() {
@@ -420,7 +456,14 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-showForm();
+// On load: check if name is saved
+const savedName = localStorage.getItem('speedclicker_name');
+if (savedName) {
+  playerName = savedName;
+  hideForm();
+} else {
+  showForm();
+}
 requestAnimationFrame(loop);
 </script>
 </body>
